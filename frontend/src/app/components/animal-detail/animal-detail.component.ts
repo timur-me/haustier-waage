@@ -1,12 +1,13 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgChartsModule } from 'ng2-charts';
 import { ChartConfiguration } from 'chart.js';
 import { ApiService } from '../../services/api.service';
 import { AnimalWithWeights } from '../../models/animal.model';
 import { WeightEntry } from '../../models/weight.model';
 import { AddWeightDialogComponent } from '../add-weight-dialog/add-weight-dialog.component';
+import { DeleteConfirmationDialogComponent } from '../delete-confirmation-dialog/delete-confirmation-dialog.component';
 import { FormsModule } from '@angular/forms';
 
 interface EditingWeight {
@@ -18,7 +19,14 @@ interface EditingWeight {
 @Component({
   selector: 'app-animal-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, NgChartsModule, AddWeightDialogComponent, FormsModule],
+  imports: [
+    CommonModule, 
+    RouterLink, 
+    NgChartsModule, 
+    AddWeightDialogComponent, 
+    DeleteConfirmationDialogComponent,
+    FormsModule
+  ],
   template: `
     <div class="container mx-auto px-4 py-8">
       <div class="mb-6">
@@ -36,15 +44,55 @@ interface EditingWeight {
       <div *ngIf="!isLoading && !error && animal" class="bg-white rounded-lg shadow p-6">
         <div class="flex justify-between items-start mb-6">
           <div>
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">{{animal.name}}</h1>
+            <div class="flex items-center gap-4">
+              <ng-container *ngIf="!isEditingName; else editNameTemplate">
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">{{animal.name}}</h1>
+                <button 
+                  class="text-blue-600 hover:text-blue-800"
+                  (click)="startEditName()"
+                >
+                  Edit Name
+                </button>
+              </ng-container>
+              <ng-template #editNameTemplate>
+                <input
+                  type="text"
+                  [(ngModel)]="editingName"
+                  class="text-3xl font-bold text-gray-900 mb-2 border rounded px-2"
+                  (keyup.enter)="saveName()"
+                />
+                <div class="flex gap-2">
+                  <button 
+                    class="text-green-600 hover:text-green-800"
+                    (click)="saveName()"
+                  >
+                    Save
+                  </button>
+                  <button 
+                    class="text-gray-600 hover:text-gray-800"
+                    (click)="cancelEditName()"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </ng-template>
+            </div>
             <p class="text-gray-600">Created: {{animal.created_at | date:'medium'}}</p>
           </div>
-          <button 
-            class="btn btn-primary"
-            (click)="showAddDialog = true"
-          >
-            Add Weight Entry
-          </button>
+          <div class="flex gap-4">
+            <button 
+              class="btn btn-primary"
+              (click)="showAddDialog = true"
+            >
+              Add Weight Entry
+            </button>
+            <button 
+              class="btn btn-danger"
+              (click)="showDeleteConfirmation = true"
+            >
+              Delete Animal
+            </button>
+          </div>
         </div>
 
         <div class="mt-8">
@@ -145,6 +193,13 @@ interface EditingWeight {
         (closeDialog)="showAddDialog = false"
         (weightAdded)="onWeightAdded($event)"
       />
+
+      <app-delete-confirmation-dialog
+        *ngIf="showDeleteConfirmation && animal"
+        [message]="getDeleteConfirmationMessage()"
+        (confirmed)="confirmDelete()"
+        (cancelled)="showDeleteConfirmation = false"
+      />
     </div>
   `,
   styles: []
@@ -154,7 +209,10 @@ export class AnimalDetailComponent implements OnInit {
   isLoading = true;
   error = '';
   showAddDialog = false;
+  showDeleteConfirmation = false;
   editingEntry: EditingWeight | null = null;
+  isEditingName = false;
+  editingName = '';
 
   weightChartData: ChartConfiguration<'line'>['data'] = {
     labels: [],
@@ -198,6 +256,7 @@ export class AnimalDetailComponent implements OnInit {
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
     private apiService: ApiService
   ) {}
 
@@ -323,6 +382,34 @@ export class AnimalDetailComponent implements OnInit {
     this.editingEntry = null;
   }
 
+  startEditName() {
+    if (!this.animal) return;
+    this.editingName = this.animal.name;
+    this.isEditingName = true;
+  }
+
+  saveName() {
+    if (!this.animal || !this.editingName.trim()) return;
+
+    this.apiService.updateAnimal(this.animal.id, { name: this.editingName.trim() }).subscribe({
+      next: (updatedAnimal) => {
+        if (this.animal) {
+          this.animal.name = updatedAnimal.name;
+        }
+        this.isEditingName = false;
+      },
+      error: (error) => {
+        console.error('Error updating animal name:', error);
+        this.error = 'Failed to update animal name. Please try again.';
+      }
+    });
+  }
+
+  cancelEditName() {
+    this.isEditingName = false;
+    this.editingName = '';
+  }
+
   deleteWeight(weightId: string) {
     if (!this.animal) return;
 
@@ -346,5 +433,28 @@ export class AnimalDetailComponent implements OnInit {
         }
       });
     }
+  }
+
+  getDeleteConfirmationMessage(): string {
+    if (!this.animal) return '';
+    
+    return this.animal.weightHistory.length > 0
+      ? `Are you sure you want to delete ${this.animal.name}? This will also delete all ${this.animal.weightHistory.length} weight entries.`
+      : `Are you sure you want to delete ${this.animal.name}?`;
+  }
+
+  confirmDelete() {
+    if (!this.animal) return;
+
+    this.apiService.deleteAnimal(this.animal.id).subscribe({
+      next: () => {
+        this.router.navigate(['/animals']);
+      },
+      error: (error) => {
+        console.error('Error deleting animal:', error);
+        this.error = 'Failed to delete animal. Please try again.';
+        this.showDeleteConfirmation = false;
+      }
+    });
   }
 } 

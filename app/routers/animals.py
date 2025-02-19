@@ -91,6 +91,11 @@ async def delete_animal(
     if not db_animal:
         raise HTTPException(status_code=404, detail="Animal not found")
 
+    # First delete all associated weight entries
+    db.query(models.Weight).filter(
+        models.Weight.animal_id == animal_id).delete()
+
+    # Then delete the animal
     db.delete(db_animal)
     db.commit()
     return None
