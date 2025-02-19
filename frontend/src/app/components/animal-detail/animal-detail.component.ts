@@ -31,26 +31,26 @@ interface EditingWeight {
   ],
   template: `
     <div class="container mx-auto px-4 py-8">
-      <div class="mb-6">
-        <a routerLink="/animals" class="text-blue-600 hover:text-blue-800">← Back to Animals</a>
+      <div class="mb-6 animate-fadeIn">
+        <a routerLink="/animals" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">← Back to Animals</a>
       </div>
 
-      <div *ngIf="isLoading" class="text-center py-8">
-        <p class="text-gray-600">Loading animal data...</p>
+      <div *ngIf="isLoading" class="text-center py-8 animate-fadeIn">
+        <p class="text-gray-600 dark:text-dark-muted">Loading animal data...</p>
       </div>
 
-      <div *ngIf="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+      <div *ngIf="error" class="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/50 text-red-700 dark:text-red-400 px-4 py-3 rounded mb-6 animate-slideIn">
         {{ error }}
       </div>
 
-      <div *ngIf="!isLoading && !error && animal" class="bg-white rounded-lg shadow p-6">
-        <div class="flex justify-between items-start mb-6">
+      <div *ngIf="!isLoading && !error && animal" class="card p-6 animate-slideIn">
+        <div class="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
           <div>
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-4 flex-wrap">
               <ng-container *ngIf="!isEditingName; else editNameTemplate">
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">{{animal.name}}</h1>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-dark-text mb-2">{{animal.name}}</h1>
                 <button 
-                  class="text-blue-600 hover:text-blue-800"
+                  class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors hover:scale-105"
                   (click)="startEditName()"
                 >
                   Edit Name
@@ -60,18 +60,18 @@ interface EditingWeight {
                 <input
                   type="text"
                   [(ngModel)]="editingName"
-                  class="text-3xl font-bold text-gray-900 mb-2 border rounded px-2"
+                  class="input text-3xl font-bold mb-2 transition-all"
                   (keyup.enter)="saveName()"
                 />
                 <div class="flex gap-2">
                   <button 
-                    class="text-green-600 hover:text-green-800"
+                    class="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors hover:scale-105"
                     (click)="saveName()"
                   >
                     Save
                   </button>
                   <button 
-                    class="text-gray-600 hover:text-gray-800"
+                    class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 transition-colors hover:scale-105"
                     (click)="cancelEditName()"
                   >
                     Cancel
@@ -79,17 +79,17 @@ interface EditingWeight {
                 </div>
               </ng-template>
             </div>
-            <p class="text-gray-600">Created: {{animal.created_at | date:'medium'}}</p>
+            <p class="text-gray-600 dark:text-dark-muted">Created: {{animal.created_at | date:'medium'}}</p>
           </div>
           <div class="flex gap-4">
             <button 
-              class="btn btn-primary"
+              class="btn btn-primary transition-all duration-300 hover:scale-105 hover:shadow-lg"
               (click)="showAddDialog = true"
             >
               Add Weight Entry
             </button>
             <button 
-              class="btn btn-danger"
+              class="btn btn-danger transition-all duration-300 hover:scale-105 hover:shadow-lg"
               (click)="showDeleteConfirmation = true"
             >
               Delete Animal
@@ -97,35 +97,37 @@ interface EditingWeight {
           </div>
         </div>
 
-        <div class="mt-8">
-          <h2 class="text-xl font-semibold text-gray-900 mb-4">Weight History</h2>
-          <div class="h-[400px]">
+        <div class="mt-8 animate-slideIn" style="animation-delay: 100ms">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-dark-text mb-4">Weight History</h2>
+          <div class="h-[400px] bg-white dark:bg-dark-secondary p-4 rounded-lg transition-all hover:shadow-lg">
             <canvas *ngIf="animal.weightHistory.length > 0"
               baseChart
               [data]="weightChartData"
               [options]="weightChartOptions"
               [type]="'line'">
             </canvas>
-            <p *ngIf="animal.weightHistory.length === 0" class="text-center text-gray-600 py-8">
+            <p *ngIf="animal.weightHistory.length === 0" class="text-center text-gray-600 dark:text-dark-muted py-8">
               No weight entries yet. Add your first weight entry to start tracking!
             </p>
           </div>
         </div>
 
-        <div class="mt-8">
-          <h2 class="text-xl font-semibold text-gray-900 mb-4">Recent Entries</h2>
+        <div class="mt-8 animate-slideIn" style="animation-delay: 200ms">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-dark-text mb-4">Recent Entries</h2>
           <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead>
                 <tr>
-                  <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight (kg)</th>
-                  <th class="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th class="table-header px-6 py-3">Date</th>
+                  <th class="table-header px-6 py-3">Weight (kg)</th>
+                  <th class="table-header px-6 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr *ngFor="let entry of sortedWeightHistory">
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                <tr *ngFor="let entry of sortedWeightHistory; let i = index" 
+                    class="table-row transition-colors hover:bg-gray-50 dark:hover:bg-dark-secondary animate-slideIn"
+                    [style.animation-delay]="(300 + i * 50) + 'ms'">
+                  <td class="table-cell px-6 py-4 whitespace-nowrap">
                     <ng-container *ngIf="editingEntry?.id !== entry.id; else editDate">
                       {{entry.date | date:'medium'}}
                     </ng-container>
@@ -134,11 +136,11 @@ interface EditingWeight {
                         type="datetime-local"
                         [ngModel]="editingEntry!.date"
                         (ngModelChange)="updateEditingDate($event)"
-                        class="input"
+                        class="input transition-all"
                       />
                     </ng-template>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td class="table-cell px-6 py-4 whitespace-nowrap">
                     <ng-container *ngIf="editingEntry?.id !== entry.id; else editWeight">
                       {{entry.weight}}
                     </ng-container>
@@ -148,20 +150,20 @@ interface EditingWeight {
                         step="0.1"
                         [ngModel]="editingEntry!.weight"
                         (ngModelChange)="updateEditingWeight($event)"
-                        class="input"
+                        class="input transition-all"
                       />
                     </ng-template>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
+                  <td class="table-cell px-6 py-4 whitespace-nowrap text-right">
                     <ng-container *ngIf="editingEntry?.id !== entry.id; else editActions">
                       <button 
-                        class="text-blue-600 hover:text-blue-800 mr-3"
+                        class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 mr-3 transition-all hover:scale-105"
                         (click)="startEdit(entry)"
                       >
                         Edit
                       </button>
                       <button 
-                        class="text-red-600 hover:text-red-800"
+                        class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-all hover:scale-105"
                         (click)="deleteWeight(entry.id)"
                       >
                         Delete
@@ -169,13 +171,13 @@ interface EditingWeight {
                     </ng-container>
                     <ng-template #editActions>
                       <button 
-                        class="text-green-600 hover:text-green-800 mr-3"
+                        class="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 mr-3 transition-all hover:scale-105"
                         (click)="saveEdit()"
                       >
                         Save
                       </button>
                       <button 
-                        class="text-gray-600 hover:text-gray-800"
+                        class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 transition-all hover:scale-105"
                         (click)="cancelEdit()"
                       >
                         Cancel
@@ -240,7 +242,19 @@ export class AnimalDetailComponent implements OnInit, OnDestroy {
         ticks: {
           callback: function(value) {
             return value + ' kg';
-          }
+          },
+          color: document.documentElement.classList.contains('dark') ? '#9ca3af' : undefined
+        },
+        grid: {
+          color: document.documentElement.classList.contains('dark') ? '#374151' : undefined
+        }
+      },
+      x: {
+        ticks: {
+          color: document.documentElement.classList.contains('dark') ? '#9ca3af' : undefined
+        },
+        grid: {
+          color: document.documentElement.classList.contains('dark') ? '#374151' : undefined
         }
       }
     },
@@ -274,6 +288,39 @@ export class AnimalDetailComponent implements OnInit, OnDestroy {
 
     this.loadAnimal(id);
     this.setupWebSocket(id);
+
+    // Update chart options for dark mode
+    this.weightChartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: false,
+          ticks: {
+            callback: function(value) {
+              return value + ' kg';
+            },
+            color: document.documentElement.classList.contains('dark') ? '#9ca3af' : undefined
+          },
+          grid: {
+            color: document.documentElement.classList.contains('dark') ? '#374151' : undefined
+          }
+        },
+        x: {
+          ticks: {
+            color: document.documentElement.classList.contains('dark') ? '#9ca3af' : undefined
+          },
+          grid: {
+            color: document.documentElement.classList.contains('dark') ? '#374151' : undefined
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          display: false
+        }
+      }
+    };
   }
 
   ngOnDestroy() {
@@ -406,11 +453,7 @@ export class AnimalDetailComponent implements OnInit, OnDestroy {
   }
 
   onWeightAdded(entry: WeightEntry) {
-    if (this.animal) {
-      this.animal.weightHistory.push(entry);
-      this.animal.lastWeight = entry.weight;
-      this.updateChartData();
-    }
+    // Remove manual addition since WebSocket will handle it
     this.showAddDialog = false;
   }
 

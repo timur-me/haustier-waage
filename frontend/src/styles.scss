@@ -14,13 +14,41 @@ body {
 }
 
 .btn-primary {
-  @apply bg-blue-500 text-white hover:bg-blue-600;
+  @apply bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700;
 }
 
 .btn-danger {
-  @apply bg-red-500 text-white hover:bg-red-600;
+  @apply bg-red-500 text-white hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700;
 }
 
 .input {
-  @apply px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500;
+  @apply px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 
+         dark:bg-dark-secondary dark:border-gray-600 dark:text-dark-text dark:focus:ring-blue-400;
+}
+
+/* Dark mode card styles */
+.card {
+  @apply bg-white dark:bg-dark-secondary rounded-lg shadow transition-colors;
+}
+
+/* Dark mode table styles */
+.table-header {
+  @apply bg-gray-50 dark:bg-dark-primary text-left text-xs font-medium text-gray-500 dark:text-dark-muted uppercase tracking-wider;
+}
+
+.table-cell {
+  @apply bg-white dark:bg-dark-secondary text-sm text-gray-900 dark:text-dark-text;
+}
+
+.table-row {
+  @apply hover:bg-gray-50 dark:hover:bg-dark-primary transition-colors;
+}
+
+/* Dark mode dialog styles */
+.dialog {
+  @apply bg-white dark:bg-dark-secondary rounded-lg shadow-xl transition-colors;
+}
+
+.dialog-overlay {
+  @apply fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70;
 }

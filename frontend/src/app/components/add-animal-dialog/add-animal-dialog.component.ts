@@ -9,12 +9,12 @@ import { Animal } from '../../models/animal.model';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center">
-      <div class="bg-white rounded-lg p-6 max-w-md w-full">
+    <div class="dialog-overlay flex items-center justify-center">
+      <div class="dialog p-6 max-w-md w-full">
         <div class="flex justify-between items-start mb-4">
-          <h2 class="text-xl font-semibold text-gray-900">Add New Animal</h2>
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-dark-text">Add New Animal</h2>
           <button 
-            class="text-gray-400 hover:text-gray-500"
+            class="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
             (click)="close()"
           >
             <span class="sr-only">Close</span>
@@ -26,14 +26,14 @@ import { Animal } from '../../models/animal.model';
 
         <form (ngSubmit)="submit()" class="space-y-4">
           <div>
-            <label for="name" class="block text-sm font-medium text-gray-700">Animal Name</label>
+            <label for="name" class="block text-sm font-medium text-gray-700 dark:text-dark-muted">Animal Name</label>
             <input
               type="text"
               id="name"
               name="name"
               required
               [(ngModel)]="name"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              class="input w-full mt-1"
               placeholder="Enter animal name"
             />
           </div>
@@ -41,7 +41,7 @@ import { Animal } from '../../models/animal.model';
           <div class="flex justify-end space-x-3">
             <button
               type="button"
-              class="btn"
+              class="btn bg-gray-200 dark:bg-dark-primary text-gray-700 dark:text-dark-text hover:bg-gray-300 dark:hover:bg-dark-secondary"
               (click)="close()"
             >
               Cancel
@@ -55,7 +55,7 @@ import { Animal } from '../../models/animal.model';
             </button>
           </div>
 
-          <div *ngIf="error" class="text-red-500 text-sm">
+          <div *ngIf="error" class="text-red-500 dark:text-red-400 text-sm">
             {{ error }}
           </div>
         </form>
