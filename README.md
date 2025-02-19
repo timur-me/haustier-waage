@@ -1,13 +1,13 @@
 # 🐾 Pet Weight Monitoring System
 
-A modern, full-stack application for tracking pet weights and health over time.
+A modern, full-stack application for tracking pet weights and health over time. Built with FastAPI and Angular.
 
 ## 🌟 Features
 
 - 🔐 Secure user authentication with JWT tokens
 - 🐈 Pet management (add, update, delete pets)
 - ⚖️ Weight tracking with history
-- 📊 Weight trend visualization
+- 📊 Interactive weight trend visualization
 - 🔄 Real-time updates
 - 📱 Responsive design
 
@@ -29,21 +29,21 @@ The backend is built with FastAPI, providing a robust and high-performance REST 
 #### Technical Highlights:
 
 - Type-safe with Python type hints
-- Comprehensive test suite (27 tests)
+- Comprehensive test suite
 - Modular architecture
 - Database migrations with Alembic
 - Environment-based configuration
 
 ### Frontend (Angular)
 
-The frontend is built with Angular, offering a modern and responsive user interface.
+The frontend is built with Angular 17, offering a modern and responsive user interface.
 
 #### Key Features:
 
-- Material-UI components
-- Redux state management
-- Responsive design
-- Interactive weight charts
+- Tailwind CSS for styling
+- Chart.js for data visualization
+- Standalone components
+- Type-safe API integration
 - Real-time updates
 
 ## 🚀 Getting Started
@@ -51,13 +51,21 @@ The frontend is built with Angular, offering a modern and responsive user interf
 ### Prerequisites
 
 - Python 3.8+
-- PostgreSQL
-- Node.js 14+
+- PostgreSQL 12+
+- Node.js 18+
 - npm/yarn
+- Git
 
 ### Backend Setup
 
-1. Create a virtual environment:
+1. Clone the repository:
+
+   ```bash
+   git clone <repository-url>
+   cd pet-weight-monitor
+   ```
+
+2. Create and activate a virtual environment:
 
    ```bash
    python -m venv venv
@@ -65,63 +73,78 @@ The frontend is built with Angular, offering a modern and responsive user interf
    venv\\Scripts\\activate   # Windows
    ```
 
-2. Install dependencies:
+3. Install dependencies:
 
    ```bash
    pip install -r requirements.txt
    ```
 
-3. Set up environment variables:
+4. Set up environment variables:
 
    ```bash
    cp .env.example .env
-   # Edit .env with your configuration
+   # Edit .env with your database credentials and settings
    ```
 
-4. Run database migrations:
+5. Run database migrations:
 
    ```bash
    alembic upgrade head
    ```
 
-5. Start the backend server:
+6. Start the backend server:
    ```bash
    uvicorn app.main:app --reload
    ```
 
+The API will be available at `http://localhost:8000`
+
 ### Frontend Setup
 
-1. Install dependencies:
+1. Navigate to the frontend directory:
 
    ```bash
    cd frontend
+   ```
+
+2. Install dependencies:
+
+   ```bash
    npm install
    ```
 
-2. Start the development server:
+3. Start the development server:
    ```bash
    npm start
    ```
 
+The frontend will be available at `http://localhost:4200`
+
 ## 🧪 Testing
 
-The project includes a comprehensive test suite:
+### Backend Tests
 
 ```bash
+# Run all tests
 pytest
+
+# Run with coverage
+pytest --cov=app
 ```
 
-Test coverage includes:
+### Frontend Tests
 
-- Authentication flows
-- Pet management operations
-- Weight tracking functionality
-- Error handling
-- Authorization checks
+```bash
+# Run unit tests
+ng test
+
+# Run e2e tests
+ng e2e
+```
 
 ## 📚 API Documentation
 
-API documentation is available at `/docs` when running the server:
+When the backend is running, access the API documentation at:
 
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
@@ -134,3 +157,32 @@ API documentation is available at `/docs` when running the server:
 - Rate limiting
 - Input validation
 - SQL injection protection
+
+## 🎯 Future Improvements
+
+1. **Backend**:
+
+   - Add user registration
+   - Implement password reset
+   - Add email notifications
+   - Enhance rate limiting
+   - Add caching layer
+
+2. **Frontend**:
+   - Add offline support
+   - Implement push notifications
+   - Add data export feature
+   - Enhance visualization options
+   - Add pet photo support
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
