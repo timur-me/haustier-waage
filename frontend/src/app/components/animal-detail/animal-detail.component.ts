@@ -1,14 +1,16 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgChartsModule } from 'ng2-charts';
 import { ChartConfiguration } from 'chart.js';
 import { ApiService } from '../../services/api.service';
+import { WebSocketService } from '../../services/websocket.service';
 import { AnimalWithWeights } from '../../models/animal.model';
 import { WeightEntry } from '../../models/weight.model';
 import { AddWeightDialogComponent } from '../add-weight-dialog/add-weight-dialog.component';
 import { DeleteConfirmationDialogComponent } from '../delete-confirmation-dialog/delete-confirmation-dialog.component';
 import { FormsModule } from '@angular/forms';
+import { Subject, takeUntil } from 'rxjs';
 
 interface EditingWeight {
   id: string;
@@ -204,7 +206,7 @@ interface EditingWeight {
   `,
   styles: []
 })
-export class AnimalDetailComponent implements OnInit {
+export class AnimalDetailComponent implements OnInit, OnDestroy {
   animal: AnimalWithWeights | null = null;
   isLoading = true;
   error = '';
@@ -213,6 +215,7 @@ export class AnimalDetailComponent implements OnInit {
   editingEntry: EditingWeight | null = null;
   isEditingName = false;
   editingName = '';
+  private destroy$ = new Subject<void>();
 
   weightChartData: ChartConfiguration<'line'>['data'] = {
     labels: [],
@@ -257,7 +260,8 @@ export class AnimalDetailComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private apiService: ApiService
+    private apiService: ApiService,
+    private webSocketService: WebSocketService
   ) {}
 
   ngOnInit() {
@@ -269,6 +273,81 @@ export class AnimalDetailComponent implements OnInit {
     }
 
     this.loadAnimal(id);
+    this.setupWebSocket(id);
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private setupWebSocket(animalId: string) {
+    // Connect to WebSocket
+    this.webSocketService.connect();
+
+    // Listen for animal updates
+    this.webSocketService.getAnimalUpdates()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(updatedAnimal => {
+        if (this.animal && updatedAnimal.id === this.animal.id) {
+          this.animal = {
+            ...this.animal,
+            ...updatedAnimal,
+            weightHistory: this.animal.weightHistory
+          };
+          if (this.isEditingName) {
+            this.editingName = updatedAnimal.name;
+          }
+        }
+      });
+
+    // Listen for animal deletions
+    this.webSocketService.getAnimalDeletions()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(deletedId => {
+        if (this.animal && deletedId === this.animal.id) {
+          this.router.navigate(['/animals']);
+        }
+      });
+
+    // Listen for weight updates
+    this.webSocketService.getWeightUpdates()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(weightEntry => {
+        if (this.animal && weightEntry.animal_id === this.animal.id) {
+          const existingIndex = this.animal.weightHistory.findIndex(w => w.id === weightEntry.id);
+          if (existingIndex !== -1) {
+            this.animal.weightHistory[existingIndex] = weightEntry;
+          } else {
+            this.animal.weightHistory.push(weightEntry);
+          }
+          this.updateChartData();
+          
+          // If we're editing this entry, update the form
+          if (this.editingEntry && this.editingEntry.id === weightEntry.id) {
+            this.editingEntry = {
+              id: weightEntry.id,
+              weight: weightEntry.weight,
+              date: new Date(weightEntry.date).toISOString().slice(0, 16)
+            };
+          }
+        }
+      });
+
+    // Listen for weight deletions
+    this.webSocketService.getWeightDeletions()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(({id, animal_id}) => {
+        if (this.animal && animal_id === this.animal.id) {
+          this.animal.weightHistory = this.animal.weightHistory.filter(w => w.id !== id);
+          this.updateChartData();
+          
+          // If we're editing this entry, cancel the edit
+          if (this.editingEntry && this.editingEntry.id === id) {
+            this.editingEntry = null;
+          }
+        }
+      });
   }
 
   loadAnimal(id: string) {

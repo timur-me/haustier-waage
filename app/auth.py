@@ -9,7 +9,7 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from . import models, schemas
-from .database import get_db
+from .database import get_db, SessionLocal
 
 load_dotenv()
 
@@ -61,6 +61,26 @@ async def get_current_user(
     if user is None:
         raise credentials_exception
     return user
+
+
+async def get_current_user_ws(token: str) -> Optional[models.User]:
+    """Get the current authenticated user for WebSocket connections."""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            return None
+
+        # Create a new database session
+        db = SessionLocal()
+        try:
+            user = db.query(models.User).filter(
+                models.User.username == username).first()
+            return user
+        finally:
+            db.close()
+    except JWTError:
+        return None
 
 
 def authenticate_user(db: Session, username: str) -> Optional[models.User]:

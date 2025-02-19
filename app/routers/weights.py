@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from .. import models, schemas, auth
 from ..database import get_db
+from ..websocket import manager
 import uuid
 from typing import List
 from datetime import UTC, datetime
@@ -36,6 +37,22 @@ async def create_weight(
     db.add(db_weight)
     db.commit()
     db.refresh(db_weight)
+
+    # Broadcast the change
+    await manager.broadcast_to_user(
+        str(current_user.id),
+        {
+            "type": "WEIGHT_CREATED",
+            "data": {
+                "id": str(db_weight.id),
+                "animal_id": str(db_weight.animal_id),
+                "weight": float(db_weight.weight),
+                "date": db_weight.date.isoformat(),
+                "created_at": db_weight.created_at.isoformat(),
+                "updated_at": db_weight.updated_at.isoformat()
+            }
+        }
+    )
     return db_weight
 
 
@@ -77,6 +94,22 @@ async def update_weight(
 
     db.commit()
     db.refresh(db_weight)
+
+    # Broadcast the change
+    await manager.broadcast_to_user(
+        str(current_user.id),
+        {
+            "type": "WEIGHT_UPDATED",
+            "data": {
+                "id": str(db_weight.id),
+                "animal_id": str(db_weight.animal_id),
+                "weight": float(db_weight.weight),
+                "date": db_weight.date.isoformat(),
+                "created_at": db_weight.created_at.isoformat(),
+                "updated_at": db_weight.updated_at.isoformat()
+            }
+        }
+    )
     return db_weight
 
 
@@ -94,6 +127,19 @@ async def delete_weight(
     if not db_weight:
         raise HTTPException(status_code=404, detail="Weight entry not found")
 
+    animal_id = db_weight.animal_id
     db.delete(db_weight)
     db.commit()
+
+    # Broadcast the change
+    await manager.broadcast_to_user(
+        str(current_user.id),
+        {
+            "type": "WEIGHT_DELETED",
+            "data": {
+                "id": str(weight_id),
+                "animal_id": str(animal_id)
+            }
+        }
+    )
     return None

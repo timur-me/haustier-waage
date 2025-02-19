@@ -1,9 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../services/api.service';
+import { WebSocketService } from '../../services/websocket.service';
 import { Animal, AnimalWithWeights } from '../../models/animal.model';
 import { AddAnimalDialogComponent } from '../add-animal-dialog/add-animal-dialog.component';
+import { Subject, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'app-animals',
@@ -54,16 +56,91 @@ import { AddAnimalDialogComponent } from '../add-animal-dialog/add-animal-dialog
   `,
   styles: []
 })
-export class AnimalsComponent implements OnInit {
+export class AnimalsComponent implements OnInit, OnDestroy {
   animals: AnimalWithWeights[] = [];
   isLoading = true;
   error = '';
   showAddDialog = false;
+  private destroy$ = new Subject<void>();
 
-  constructor(private apiService: ApiService) {}
+  constructor(
+    private apiService: ApiService,
+    private webSocketService: WebSocketService
+  ) {}
 
   ngOnInit() {
     this.loadAnimals();
+    this.setupWebSocket();
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private setupWebSocket() {
+    // Connect to WebSocket
+    this.webSocketService.connect();
+
+    // Listen for animal updates
+    this.webSocketService.getAnimalUpdates()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(updatedAnimal => {
+        const index = this.animals.findIndex(a => a.id === updatedAnimal.id);
+        if (index !== -1) {
+          // Update existing animal
+          this.animals[index] = {
+            ...this.animals[index],
+            ...updatedAnimal
+          };
+        } else {
+          // Add new animal
+          this.animals.unshift({
+            ...updatedAnimal,
+            weightHistory: [],
+            lastWeight: undefined
+          });
+        }
+      });
+
+    // Listen for animal deletions
+    this.webSocketService.getAnimalDeletions()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(deletedId => {
+        this.animals = this.animals.filter(a => a.id !== deletedId);
+      });
+
+    // Listen for weight updates
+    this.webSocketService.getWeightUpdates()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(weightEntry => {
+        const animal = this.animals.find(a => a.id === weightEntry.animal_id);
+        if (animal) {
+          const existingIndex = animal.weightHistory.findIndex(w => w.id === weightEntry.id);
+          if (existingIndex !== -1) {
+            animal.weightHistory[existingIndex] = weightEntry;
+          } else {
+            animal.weightHistory.push(weightEntry);
+          }
+          animal.weightHistory.sort((a, b) => 
+            new Date(a.date).getTime() - new Date(b.date).getTime()
+          );
+          animal.lastWeight = animal.weightHistory[animal.weightHistory.length - 1].weight;
+        }
+      });
+
+    // Listen for weight deletions
+    this.webSocketService.getWeightDeletions()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(({id, animal_id}) => {
+        const animal = this.animals.find(a => a.id === animal_id);
+        if (animal) {
+          animal.weightHistory = animal.weightHistory.filter(w => w.id !== id);
+          animal.lastWeight = animal.weightHistory.length > 0 
+            ? animal.weightHistory[animal.weightHistory.length - 1].weight 
+            : undefined;
+        }
+      });
   }
 
   loadAnimals() {

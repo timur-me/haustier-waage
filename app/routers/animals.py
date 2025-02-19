@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from .. import models, schemas, auth
 from ..database import get_db
+from ..websocket import manager
 import uuid
 from typing import List
 
@@ -25,6 +26,21 @@ async def create_animal(
     db.add(db_animal)
     db.commit()
     db.refresh(db_animal)
+
+    # Broadcast the change
+    await manager.broadcast_to_user(
+        str(current_user.id),
+        {
+            "type": "ANIMAL_CREATED",
+            "data": {
+                "id": str(db_animal.id),
+                "name": db_animal.name,
+                "owner_id": str(db_animal.owner_id),
+                "created_at": db_animal.created_at.isoformat(),
+                "updated_at": db_animal.updated_at.isoformat()
+            }
+        }
+    )
     return db_animal
 
 
@@ -74,6 +90,21 @@ async def update_animal(
 
     db.commit()
     db.refresh(db_animal)
+
+    # Broadcast the change
+    await manager.broadcast_to_user(
+        str(current_user.id),
+        {
+            "type": "ANIMAL_UPDATED",
+            "data": {
+                "id": str(db_animal.id),
+                "name": db_animal.name,
+                "owner_id": str(db_animal.owner_id),
+                "created_at": db_animal.created_at.isoformat(),
+                "updated_at": db_animal.updated_at.isoformat()
+            }
+        }
+    )
     return db_animal
 
 
@@ -98,4 +129,15 @@ async def delete_animal(
     # Then delete the animal
     db.delete(db_animal)
     db.commit()
+
+    # Broadcast the change
+    await manager.broadcast_to_user(
+        str(current_user.id),
+        {
+            "type": "ANIMAL_DELETED",
+            "data": {
+                "id": str(animal_id)
+            }
+        }
+    )
     return None
