@@ -1,8 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink, Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { NotificationService } from '../../services/notification.service';
 import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
 
 @Component({
@@ -138,7 +139,11 @@ export class LoginComponent implements OnInit {
   error = '';
   isLoading = false;
 
-  constructor(private authService: AuthService, private router: Router) {}
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+    private notificationService: NotificationService
+  ) {}
 
   ngOnInit() {
     // Check for redirected username (from username change)
@@ -146,6 +151,11 @@ export class LoginComponent implements OnInit {
     if (redirectUsername) {
       this.username = redirectUsername;
       localStorage.removeItem('redirectUsername'); // Clear it after use
+    }
+
+    // If user is already logged in, redirect to home
+    if (this.authService.isAuthenticated()) {
+      this.router.navigate(['/']);
     }
   }
 
@@ -160,7 +170,7 @@ export class LoginComponent implements OnInit {
 
     try {
       await this.authService.login(this.username, this.password);
-      this.router.navigate(['/animals']);
+      this.router.navigate(['/']);
     } catch (error: any) {
       this.error = error.error?.detail || 'An error occurred during login';
       this.isLoading = false;
