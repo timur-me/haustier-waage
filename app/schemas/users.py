@@ -11,7 +11,8 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    password: str
+    password_hash: str
+    salt: str
     email: EmailStr  # Make email required for registration
 
 

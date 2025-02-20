@@ -36,7 +36,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
             UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt, int(expires_delta.total_seconds() if expires_delta else ACCESS_TOKEN_EXPIRE_MINUTES * 60)
+    return encoded_jwt
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
@@ -81,43 +81,36 @@ async def login(
         )
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token, expires_in = create_access_token(
+    access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer", "expires_in": expires_in}
+    return {"access_token": access_token, "token_type": "bearer", "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60}
 
 
 @router.post("/register", response_model=schemas.Token)
 async def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    """Register a new user."""
     # Check if username already exists
-    db_user = db.query(models.User).filter(
-        models.User.username == user.username).first()
-    if db_user:
+    if db.query(models.User).filter(models.User.username == user.username).first():
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered"
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Username already taken"
         )
 
     # Check if email already exists
-    db_user = db.query(models.User).filter(
-        models.User.email == user.email).first()
-    if db_user:
+    if user.email and db.query(models.User).filter(models.User.email == user.email).first():
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered"
         )
 
-    # Hash password
-    hashed_password, salt = hash_password(user.password)
-
     # Create new user
     db_user = models.User(
-        id=uuid.uuid4(),
         username=user.username,
         email=user.email,
-        password_hash=hashed_password,
-        salt=salt,
-        email_verified=False
+        password_hash=user.password_hash,
+        salt=user.salt,
+        created_at=datetime.now(UTC)
     )
     db.add(db_user)
     db.commit()
@@ -125,10 +118,15 @@ async def register_user(user: schemas.UserCreate, db: Session = Depends(get_db))
 
     # Create access token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token, expires_in = create_access_token(
+    access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer", "expires_in": expires_in}
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    }
 
 
 @router.post("/password-reset-request")
@@ -188,7 +186,7 @@ async def confirm_password_reset(
 @router.post("/refresh-token", response_model=schemas.Token)
 async def refresh_token(current_user: models.User = Depends(get_current_user)):
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token, expires_in = create_access_token(
+    access_token = create_access_token(
         data={"sub": current_user.username}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer", "expires_in": expires_in}
+    return {"access_token": access_token, "token_type": "bearer", "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60}

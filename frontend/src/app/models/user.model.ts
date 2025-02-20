@@ -4,6 +4,7 @@ export interface User {
   id: string;
   username: string;
   email: string | null;
+  email_verified: boolean;
   first_name: string | null;
   last_name: string | null;
   profile_picture: MediaResponse | null;

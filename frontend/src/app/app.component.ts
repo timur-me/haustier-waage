@@ -21,7 +21,15 @@ import { take } from 'rxjs';
         <div
           class="container mx-auto px-4 py-4 flex justify-between items-center"
         >
-          <h1 class="text-xl font-bold">Pet Weight Monitor</h1>
+          <div class="flex items-center space-x-4">
+            <h1 class="text-xl font-bold">Pet Weight Monitor</h1>
+            <a
+              routerLink="/animals"
+              class="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+            >
+              My Pets
+            </a>
+          </div>
           <div class="flex items-center space-x-4">
             <a
               routerLink="/profile"

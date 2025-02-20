@@ -60,26 +60,30 @@ export class AuthService {
     return this.isAuthenticatedSubject.asObservable();
   }
 
+  validatePassword(password: string): { isValid: boolean; errors: string[] } {
+    return this.passwordService.validatePassword(password);
+  }
+
   async register(
     username: string,
     email: string,
     password: string
   ): Promise<void> {
-    const passwordValidation = this.passwordService.validatePassword(password);
-    if (!passwordValidation.isValid) {
-      throw new Error(passwordValidation.errors.join('\n'));
-    }
-
-    const { hash: passwordHash, salt } =
+    const { hash: password_hash, salt } =
       await this.passwordService.hashPassword(password);
-    return this.http
-      .post<void>(`${this.API_URL}/register`, {
+
+    const response = await this.http
+      .post<AuthResponse>(`${this.API_URL}/register`, {
         username,
         email,
-        password_hash: passwordHash,
+        password_hash,
         salt,
       })
       .toPromise();
+
+    if (response) {
+      this.handleAuthResponse(response);
+    }
   }
 
   async login(username: string, password: string): Promise<AuthResponse> {
