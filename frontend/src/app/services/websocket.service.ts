@@ -1,181 +1,148 @@
 import { Injectable } from '@angular/core';
-import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
+import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
 import { environment } from '../../environments/environment';
-import { Observable, Subject, timer, retry, share, takeUntil, filter } from 'rxjs';
+import {
+  Observable,
+  Subject,
+  timer,
+  retryWhen,
+  delay,
+  takeUntil,
+  filter,
+  map,
+} from 'rxjs';
 import { Animal } from '../models/animal.model';
 import { WeightEntry } from '../models/weight.model';
 
+export type WebSocketMessageType =
+  | 'WEIGHT_CREATED'
+  | 'WEIGHT_UPDATED'
+  | 'WEIGHT_DELETED'
+  | 'ANIMAL_CREATED'
+  | 'ANIMAL_UPDATED'
+  | 'ANIMAL_DELETED'
+  | 'HEARTBEAT';
+
+interface WebSocketMessageData {
+  id?: string;
+  animal_id?: string;
+  weight?: number;
+  date?: string;
+  animal?: Animal;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface WebSocketMessage {
-  type: string;
-  data: any;
+  type: WebSocketMessageType;
+  data: WebSocketMessageData;
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class WebSocketService {
-  private socket$: WebSocketSubject<WebSocketMessage> | null = null;
-  private destroy$ = new Subject<void>();
+  private socket: WebSocketSubject<WebSocketMessage> | null = null;
   private messageSubject = new Subject<WebSocketMessage>();
-  private reconnectTimer: any;
-  private heartbeatTimer: any;
-  private missedHeartbeats = 0;
-  private readonly MAX_MISSED_HEARTBEATS = 3;
+  private heartbeatInterval = 30000; // 30 seconds
+  private destroy$ = new Subject<void>();
 
   constructor() {}
 
-  public connect(): void {
-    if (!this.socket$ || this.socket$.closed) {
+  public connect() {
+    if (!this.socket || this.socket.closed) {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) {
+        console.error('No token available for WebSocket connection');
+        return;
+      }
 
-      const wsUrl = environment.apiUrl.replace('http', 'ws') + `/ws/${token}`;
-      this.socket$ = webSocket<WebSocketMessage>({
-        url: wsUrl,
+      this.socket = webSocket<WebSocketMessage>({
+        url: `${environment.wsUrl}/${token}`,
         openObserver: {
           next: () => {
             console.log('WebSocket connected');
-            this.startHeartbeatMonitoring();
-          }
+            this.startHeartbeat();
+          },
         },
         closeObserver: {
           next: () => {
             console.log('WebSocket disconnected');
-            this.handleDisconnection();
-          }
-        }
+            this.socket = null;
+          },
+        },
       });
 
-      this.socket$.pipe(
-        retry({ count: 5, delay: 1000 }),
-        takeUntil(this.destroy$),
-        share()
-      ).subscribe({
-        next: (message) => {
-          if (message.type === 'HEARTBEAT') {
-            this.handleHeartbeat();
-          } else {
-            this.messageSubject.next(message);
-          }
-        },
-        error: (error) => {
-          console.error('WebSocket error:', error);
-          this.handleDisconnection();
-        },
-        complete: () => {
-          console.log('WebSocket connection closed');
-          this.handleDisconnection();
+      this.socket
+        .pipe(
+          retryWhen((errors) => errors.pipe(delay(1000))),
+          takeUntil(this.destroy$)
+        )
+        .subscribe({
+          next: (message) => this.messageSubject.next(message),
+          error: (error) => console.error('WebSocket error:', error),
+        });
+    }
+  }
+
+  private startHeartbeat() {
+    timer(0, this.heartbeatInterval)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        if (this.socket && !this.socket.closed) {
+          this.socket.next({ type: 'HEARTBEAT', data: {} });
         }
       });
-    }
   }
 
-  private startHeartbeatMonitoring(): void {
-    // Reset heartbeat monitoring
-    this.missedHeartbeats = 0;
-    
-    // Clear existing timers
-    if (this.heartbeatTimer) {
-      clearInterval(this.heartbeatTimer);
-    }
-    
-    // Check for heartbeats every 35 seconds (server sends every 30)
-    this.heartbeatTimer = setInterval(() => {
-      this.missedHeartbeats++;
-      if (this.missedHeartbeats >= this.MAX_MISSED_HEARTBEATS) {
-        console.log('Too many missed heartbeats, reconnecting...');
-        this.handleDisconnection();
-      }
-    }, 35000);
-  }
-
-  private handleHeartbeat(): void {
-    this.missedHeartbeats = 0;
-  }
-
-  private handleDisconnection(): void {
-    // Clear heartbeat monitoring
-    if (this.heartbeatTimer) {
-      clearInterval(this.heartbeatTimer);
-    }
-
-    // Clear existing reconnection timer
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-    }
-
-    // Close existing connection
-    if (this.socket$) {
-      this.socket$.complete();
-      this.socket$ = null;
-    }
-
-    // Attempt to reconnect after 5 seconds
-    this.reconnectTimer = setTimeout(() => {
-      console.log('Attempting to reconnect...');
-      this.connect();
-    }, 5000);
-  }
-
-  public disconnect(): void {
+  public disconnect() {
     this.destroy$.next();
-    if (this.heartbeatTimer) {
-      clearInterval(this.heartbeatTimer);
-    }
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-    }
-    if (this.socket$) {
-      this.socket$.complete();
-      this.socket$ = null;
+    this.destroy$.complete();
+    if (this.socket) {
+      this.socket.complete();
+      this.socket = null;
     }
   }
 
   public getAnimalUpdates(): Observable<Animal> {
-    return new Observable(observer => {
-      const subscription = this.messageSubject.pipe(
-        filter(message => message.type === 'ANIMAL_UPDATED' || message.type === 'ANIMAL_CREATED')
-      ).subscribe(message => {
-        observer.next(message.data);
-      });
-
-      return () => subscription.unsubscribe();
-    });
+    return this.messageSubject.pipe(
+      filter(
+        (msg) => msg.type === 'ANIMAL_CREATED' || msg.type === 'ANIMAL_UPDATED'
+      ),
+      map((msg) => msg.data.animal as Animal)
+    );
   }
 
   public getAnimalDeletions(): Observable<string> {
-    return new Observable(observer => {
-      const subscription = this.messageSubject.pipe(
-        filter(message => message.type === 'ANIMAL_DELETED')
-      ).subscribe(message => {
-        observer.next(message.data.id);
-      });
-
-      return () => subscription.unsubscribe();
-    });
+    return this.messageSubject.pipe(
+      filter((msg) => msg.type === 'ANIMAL_DELETED'),
+      map((msg) => msg.data.id as string)
+    );
   }
 
   public getWeightUpdates(): Observable<WeightEntry> {
-    return new Observable(observer => {
-      const subscription = this.messageSubject.pipe(
-        filter(message => message.type === 'WEIGHT_UPDATED' || message.type === 'WEIGHT_CREATED')
-      ).subscribe(message => {
-        observer.next(message.data);
-      });
-
-      return () => subscription.unsubscribe();
-    });
+    return this.messageSubject.pipe(
+      filter(
+        (msg) => msg.type === 'WEIGHT_CREATED' || msg.type === 'WEIGHT_UPDATED'
+      ),
+      map((msg) => ({
+        id: msg.data.id!,
+        animal_id: msg.data.animal_id!,
+        weight: msg.data.weight!,
+        date: msg.data.date!,
+        created_at: msg.data.created_at!,
+        updated_at: msg.data.updated_at!,
+      }))
+    );
   }
 
-  public getWeightDeletions(): Observable<{id: string, animal_id: string}> {
-    return new Observable(observer => {
-      const subscription = this.messageSubject.pipe(
-        filter(message => message.type === 'WEIGHT_DELETED')
-      ).subscribe(message => {
-        observer.next(message.data);
-      });
-
-      return () => subscription.unsubscribe();
-    });
+  public getWeightDeletions(): Observable<{ id: string; animal_id: string }> {
+    return this.messageSubject.pipe(
+      filter((msg) => msg.type === 'WEIGHT_DELETED'),
+      map((msg) => ({
+        id: msg.data.id!,
+        animal_id: msg.data.animal_id!,
+      }))
+    );
   }
-} 
+}

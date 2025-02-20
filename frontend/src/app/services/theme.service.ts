@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ThemeService {
   private darkMode = new BehaviorSubject<boolean>(this.isDarkMode());
@@ -10,11 +10,13 @@ export class ThemeService {
 
   constructor() {
     // Watch for system theme changes
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-      if (localStorage.getItem('theme') === null) {
-        this.setDarkMode(e.matches);
-      }
-    });
+    window
+      .matchMedia('(prefers-color-scheme: dark)')
+      .addEventListener('change', (e) => {
+        if (localStorage.getItem('theme') === null) {
+          this.setDarkMode(e.matches);
+        }
+      });
   }
 
   private isDarkMode(): boolean {
@@ -38,4 +40,4 @@ export class ThemeService {
   toggleTheme() {
     this.setDarkMode(!this.darkMode.value);
   }
-} 
+}

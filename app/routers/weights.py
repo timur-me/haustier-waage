@@ -8,12 +8,12 @@ from typing import List
 from datetime import UTC, datetime
 
 router = APIRouter(
-    prefix="/weights",
+    prefix="/api/weights",
     tags=["weights"]
 )
 
 
-@router.post("/", response_model=schemas.Weight)
+@router.post("/", response_model=schemas.WeightResponse)
 async def create_weight(
     weight: schemas.WeightCreate,
     current_user: models.User = Depends(auth.get_current_user),
@@ -56,7 +56,7 @@ async def create_weight(
     return db_weight
 
 
-@router.get("/animal/{animal_id}", response_model=List[schemas.Weight])
+@router.get("/animal/{animal_id}", response_model=List[schemas.WeightResponse])
 async def get_animal_weights(
     animal_id: uuid.UUID,
     current_user: models.User = Depends(auth.get_current_user),
@@ -74,7 +74,7 @@ async def get_animal_weights(
     return db.query(models.Weight).filter(models.Weight.animal_id == animal_id).all()
 
 
-@router.put("/{weight_id}", response_model=schemas.Weight)
+@router.put("/{weight_id}", response_model=schemas.WeightResponse)
 async def update_weight(
     weight_id: uuid.UUID,
     weight: schemas.WeightUpdate,

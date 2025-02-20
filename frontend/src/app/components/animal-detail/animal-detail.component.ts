@@ -1,16 +1,18 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { NgChartsModule } from 'ng2-charts';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { ChartConfiguration } from 'chart.js';
+import { NgChartsModule } from 'ng2-charts';
 import { ApiService } from '../../services/api.service';
 import { WebSocketService } from '../../services/websocket.service';
 import { AnimalWithWeights } from '../../models/animal.model';
 import { WeightEntry } from '../../models/weight.model';
+import { ImageUploadComponent } from '../image-upload/image-upload.component';
 import { AddWeightDialogComponent } from '../add-weight-dialog/add-weight-dialog.component';
 import { DeleteConfirmationDialogComponent } from '../delete-confirmation-dialog/delete-confirmation-dialog.component';
-import { FormsModule } from '@angular/forms';
-import { Subject, takeUntil } from 'rxjs';
 
 interface EditingWeight {
   id: string;
@@ -22,167 +24,255 @@ interface EditingWeight {
   selector: 'app-animal-detail',
   standalone: true,
   imports: [
-    CommonModule, 
-    RouterLink, 
-    NgChartsModule, 
-    AddWeightDialogComponent, 
+    CommonModule,
+    FormsModule,
+    NgChartsModule,
+    ImageUploadComponent,
+    AddWeightDialogComponent,
     DeleteConfirmationDialogComponent,
-    FormsModule
+    RouterLink,
   ],
   template: `
     <div class="container mx-auto px-4 py-8">
-      <div class="mb-6 animate-fadeIn">
-        <a routerLink="/animals" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">← Back to Animals</a>
+      <!-- Back Button -->
+      <a
+        routerLink="/animals"
+        class="inline-flex items-center text-gray-600 dark:text-dark-muted hover:text-gray-900 dark:hover:text-dark-text mb-6"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-5 w-5 mr-2"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+        >
+          <path
+            fill-rule="evenodd"
+            d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
+            clip-rule="evenodd"
+          />
+        </svg>
+        Back to Animals
+      </a>
+
+      <!-- Loading State -->
+      <div *ngIf="!animal" class="flex justify-center items-center py-12">
+        <div
+          class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"
+        ></div>
       </div>
 
-      <div *ngIf="isLoading" class="text-center py-8 animate-fadeIn">
-        <p class="text-gray-600 dark:text-dark-muted">Loading animal data...</p>
-      </div>
-
-      <div *ngIf="error" class="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/50 text-red-700 dark:text-red-400 px-4 py-3 rounded mb-6 animate-slideIn">
-        {{ error }}
-      </div>
-
-      <div *ngIf="!isLoading && !error && animal" class="card p-6 animate-slideIn">
-        <div class="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
-          <div>
-            <div class="flex items-center gap-4 flex-wrap">
-              <ng-container *ngIf="!isEditingName; else editNameTemplate">
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-dark-text mb-2">{{animal.name}}</h1>
-                <button 
-                  class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors hover:scale-105"
-                  (click)="startEditName()"
-                >
-                  Edit Name
-                </button>
-              </ng-container>
-              <ng-template #editNameTemplate>
-                <input
-                  type="text"
-                  [(ngModel)]="editingName"
-                  class="input text-3xl font-bold mb-2 transition-all"
-                  (keyup.enter)="saveName()"
+      <!-- Animal Details -->
+      <div *ngIf="animal" class="space-y-8">
+        <!-- Header -->
+        <div class="flex items-start gap-6">
+          <!-- Profile Picture -->
+          <div class="flex-shrink-0">
+            <div
+              (click)="openImageUpload()"
+              class="w-24 h-24 rounded-full overflow-hidden bg-gray-100 dark:bg-dark-secondary relative group cursor-pointer"
+            >
+              <img
+                *ngIf="getProfilePictureUrl()"
+                [src]="getProfilePictureUrl()"
+                [alt]="animal.name"
+                class="w-full h-full object-cover"
+                (error)="handleImageError($event)"
+              />
+              <div
+                *ngIf="!getProfilePictureUrl()"
+                class="w-full h-full flex items-center justify-center text-gray-400"
+              >
+                <img
+                  src="/assets/images/placeholder-pet.svg"
+                  alt="Default pet image"
+                  class="w-16 h-16"
                 />
-                <div class="flex gap-2">
-                  <button 
-                    class="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors hover:scale-105"
-                    (click)="saveName()"
+              </div>
+              <div
+                class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+              >
+                <span class="text-white text-sm">Change Photo</span>
+              </div>
+              <app-image-upload
+                #imageUpload
+                [currentImageUrl]="getProfilePictureUrl()"
+                buttonText="Change"
+                (imageUploaded)="onProfilePictureUploaded($event)"
+                class="hidden"
+              />
+            </div>
+          </div>
+
+          <div class="flex-1">
+            <div class="flex justify-between items-start">
+              <div>
+                <div class="flex items-center gap-2 mb-2">
+                  <h1
+                    *ngIf="!isEditingName"
+                    class="text-3xl font-bold text-gray-900 dark:text-dark-text"
                   >
-                    Save
-                  </button>
-                  <button 
-                    class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 transition-colors hover:scale-105"
-                    (click)="cancelEditName()"
+                    {{ animal.name }}
+                  </h1>
+                  <input
+                    *ngIf="isEditingName"
+                    type="text"
+                    [(ngModel)]="editingName"
+                    (keyup.enter)="saveName()"
+                    (keyup.escape)="cancelNameEdit()"
+                    class="text-3xl font-bold bg-transparent border-b border-blue-500 focus:outline-none text-gray-900 dark:text-dark-text"
+                    [class.dark]="true"
+                  />
+                  <button
+                    *ngIf="!isEditingName"
+                    (click)="startNameEdit()"
+                    class="text-gray-500 hover:text-gray-700 dark:text-dark-muted dark:hover:text-dark-text"
                   >
-                    Cancel
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"
+                      />
+                    </svg>
                   </button>
                 </div>
-              </ng-template>
+                <p class="text-gray-600 dark:text-dark-muted">
+                  {{ animal.species || 'No species' }}
+                  {{ animal.breed ? '• ' + animal.breed : '' }}
+                </p>
+                <p
+                  *ngIf="animal.birth_date"
+                  class="text-sm text-gray-500 dark:text-dark-muted mt-1"
+                >
+                  Born: {{ animal.birth_date | date }}
+                </p>
+              </div>
+              <button
+                (click)="showDeleteConfirmation = true"
+                class="btn btn-danger"
+              >
+                Delete Pet
+              </button>
             </div>
-            <p class="text-gray-600 dark:text-dark-muted">Created: {{animal.created_at | date:'medium'}}</p>
-          </div>
-          <div class="flex gap-4">
-            <button 
-              class="btn btn-primary transition-all duration-300 hover:scale-105 hover:shadow-lg"
-              (click)="showAddDialog = true"
-            >
-              Add Weight Entry
-            </button>
-            <button 
-              class="btn btn-danger transition-all duration-300 hover:scale-105 hover:shadow-lg"
-              (click)="showDeleteConfirmation = true"
-            >
-              Delete Animal
-            </button>
           </div>
         </div>
 
-        <div class="mt-8 animate-slideIn" style="animation-delay: 100ms">
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-dark-text mb-4">Weight History</h2>
-          <div class="h-[400px] bg-white dark:bg-dark-secondary p-4 rounded-lg transition-all hover:shadow-lg">
-            <canvas *ngIf="animal.weightHistory.length > 0"
+        <!-- Weight Chart -->
+        <div class="card p-6">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-dark-text">
+              Weight History
+            </h2>
+            <button
+              (click)="showAddWeightDialog = true"
+              class="btn btn-primary"
+            >
+              Add Weight
+            </button>
+          </div>
+
+          <div *ngIf="weightChart" class="h-[400px]">
+            <canvas
               baseChart
-              [data]="weightChartData"
-              [options]="weightChartOptions"
-              [type]="'line'">
+              [type]="weightChart.type"
+              [data]="weightChart.data"
+              [options]="weightChart.options"
+            >
             </canvas>
-            <p *ngIf="animal.weightHistory.length === 0" class="text-center text-gray-600 dark:text-dark-muted py-8">
-              No weight entries yet. Add your first weight entry to start tracking!
-            </p>
           </div>
-        </div>
 
-        <div class="mt-8 animate-slideIn" style="animation-delay: 200ms">
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-dark-text mb-4">Recent Entries</h2>
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <!-- Weight History Table -->
+          <div class="mt-8 overflow-x-auto">
+            <table
+              class="min-w-full divide-y divide-gray-200 dark:divide-gray-700"
+            >
               <thead>
                 <tr>
                   <th class="table-header px-6 py-3">Date</th>
                   <th class="table-header px-6 py-3">Weight (kg)</th>
-                  <th class="table-header px-6 py-3 text-right">Actions</th>
+                  <th class="table-header px-6 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                <tr *ngFor="let entry of sortedWeightHistory; let i = index" 
-                    class="table-row transition-colors hover:bg-gray-50 dark:hover:bg-dark-secondary animate-slideIn"
-                    [style.animation-delay]="(300 + i * 50) + 'ms'">
-                  <td class="table-cell px-6 py-4 whitespace-nowrap">
-                    <ng-container *ngIf="editingEntry?.id !== entry.id; else editDate">
-                      {{entry.date | date:'medium'}}
+                <tr
+                  *ngFor="let weight of animal.weightHistory"
+                  class="table-row"
+                >
+                  <td class="table-cell px-6 py-4">
+                    <ng-container
+                      *ngIf="editingEntry?.id !== weight.id; else dateEdit"
+                    >
+                      {{ weight.date | date : 'medium' }}
                     </ng-container>
-                    <ng-template #editDate>
+                    <ng-template #dateEdit>
                       <input
                         type="datetime-local"
-                        [ngModel]="editingEntry!.date"
-                        (ngModelChange)="updateEditingDate($event)"
-                        class="input transition-all"
+                        [ngModel]="editingEntry?.date"
+                        (ngModelChange)="editingEntry!.date = $event"
+                        class="input w-full"
                       />
                     </ng-template>
                   </td>
-                  <td class="table-cell px-6 py-4 whitespace-nowrap">
-                    <ng-container *ngIf="editingEntry?.id !== entry.id; else editWeight">
-                      {{entry.weight}}
+                  <td class="table-cell px-6 py-4">
+                    <ng-container
+                      *ngIf="editingEntry?.id !== weight.id; else weightEdit"
+                    >
+                      {{ weight.weight }}
                     </ng-container>
-                    <ng-template #editWeight>
+                    <ng-template #weightEdit>
                       <input
                         type="number"
+                        [ngModel]="editingEntry?.weight"
+                        (ngModelChange)="editingEntry!.weight = $event"
+                        class="input w-full"
                         step="0.1"
-                        [ngModel]="editingEntry!.weight"
-                        (ngModelChange)="updateEditingWeight($event)"
-                        class="input transition-all"
                       />
                     </ng-template>
                   </td>
-                  <td class="table-cell px-6 py-4 whitespace-nowrap text-right">
-                    <ng-container *ngIf="editingEntry?.id !== entry.id; else editActions">
-                      <button 
-                        class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 mr-3 transition-all hover:scale-105"
-                        (click)="startEdit(entry)"
+                  <td class="table-cell px-6 py-4">
+                    <div class="flex space-x-2">
+                      <ng-container
+                        *ngIf="editingEntry?.id !== weight.id; else editActions"
                       >
-                        Edit
-                      </button>
-                      <button 
-                        class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-all hover:scale-105"
-                        (click)="deleteWeight(entry.id)"
-                      >
-                        Delete
-                      </button>
-                    </ng-container>
-                    <ng-template #editActions>
-                      <button 
-                        class="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 mr-3 transition-all hover:scale-105"
-                        (click)="saveEdit()"
-                      >
-                        Save
-                      </button>
-                      <button 
-                        class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 transition-all hover:scale-105"
-                        (click)="cancelEdit()"
-                      >
-                        Cancel
-                      </button>
-                    </ng-template>
+                        <button
+                          (click)="startEditingWeight(weight)"
+                          class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          (click)="deleteWeight(weight.id)"
+                          class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                        >
+                          Delete
+                        </button>
+                      </ng-container>
+                      <ng-template #editActions>
+                        <button
+                          (click)="saveEditingWeight()"
+                          class="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
+                        >
+                          Save
+                        </button>
+                        <button
+                          (click)="editingEntry = null"
+                          class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
+                        >
+                          Cancel
+                        </button>
+                      </ng-template>
+                    </div>
+                  </td>
+                </tr>
+                <tr *ngIf="animal.weightHistory.length === 0">
+                  <td
+                    colspan="3"
+                    class="table-cell px-6 py-4 text-center text-gray-500 dark:text-dark-muted"
+                  >
+                    No weight entries yet
                   </td>
                 </tr>
               </tbody>
@@ -191,136 +281,51 @@ interface EditingWeight {
         </div>
       </div>
 
+      <!-- Add Weight Dialog -->
       <app-add-weight-dialog
-        *ngIf="showAddDialog && animal"
+        *ngIf="showAddWeightDialog && animal"
         [animalId]="animal.id"
-        (closeDialog)="showAddDialog = false"
+        (closeDialog)="showAddWeightDialog = false"
         (weightAdded)="onWeightAdded($event)"
       />
 
+      <!-- Delete Confirmation Dialog -->
       <app-delete-confirmation-dialog
-        *ngIf="showDeleteConfirmation && animal"
-        [message]="getDeleteConfirmationMessage()"
-        (confirmed)="confirmDelete()"
+        *ngIf="showDeleteConfirmation"
+        message="Are you sure you want to delete this pet? This action cannot be undone."
+        (confirmed)="deleteAnimal()"
         (cancelled)="showDeleteConfirmation = false"
       />
     </div>
   `,
-  styles: []
 })
 export class AnimalDetailComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+  animalId!: string;
   animal: AnimalWithWeights | null = null;
-  isLoading = true;
-  error = '';
-  showAddDialog = false;
+  weightChart: {
+    data: ChartConfiguration<'line'>['data'];
+    options: ChartConfiguration<'line'>['options'];
+    type: 'line';
+  } | null = null;
+
+  showAddWeightDialog = false;
   showDeleteConfirmation = false;
   editingEntry: EditingWeight | null = null;
   isEditingName = false;
   editingName = '';
-  private destroy$ = new Subject<void>();
-
-  weightChartData: ChartConfiguration<'line'>['data'] = {
-    labels: [],
-    datasets: [
-      {
-        data: [],
-        label: 'Weight (kg)',
-        fill: false,
-        tension: 0.1,
-        borderColor: 'rgb(59, 130, 246)',
-        backgroundColor: 'rgba(59, 130, 246, 0.5)'
-      }
-    ]
-  };
-
-  weightChartOptions: ChartConfiguration<'line'>['options'] = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      y: {
-        beginAtZero: false,
-        ticks: {
-          callback: function(value) {
-            return value + ' kg';
-          },
-          color: document.documentElement.classList.contains('dark') ? '#9ca3af' : undefined
-        },
-        grid: {
-          color: document.documentElement.classList.contains('dark') ? '#374151' : undefined
-        }
-      },
-      x: {
-        ticks: {
-          color: document.documentElement.classList.contains('dark') ? '#9ca3af' : undefined
-        },
-        grid: {
-          color: document.documentElement.classList.contains('dark') ? '#374151' : undefined
-        }
-      }
-    },
-    plugins: {
-      legend: {
-        display: false
-      }
-    }
-  };
-
-  get sortedWeightHistory(): WeightEntry[] {
-    return this.animal?.weightHistory.slice().sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    ) ?? [];
-  }
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private apiService: ApiService,
+    public apiService: ApiService,
     private webSocketService: WebSocketService
   ) {}
 
   ngOnInit() {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (!id) {
-      this.error = 'Animal ID not found';
-      this.isLoading = false;
-      return;
-    }
-
-    this.loadAnimal(id);
-    this.setupWebSocket(id);
-
-    // Update chart options for dark mode
-    this.weightChartOptions = {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          beginAtZero: false,
-          ticks: {
-            callback: function(value) {
-              return value + ' kg';
-            },
-            color: document.documentElement.classList.contains('dark') ? '#9ca3af' : undefined
-          },
-          grid: {
-            color: document.documentElement.classList.contains('dark') ? '#374151' : undefined
-          }
-        },
-        x: {
-          ticks: {
-            color: document.documentElement.classList.contains('dark') ? '#9ca3af' : undefined
-          },
-          grid: {
-            color: document.documentElement.classList.contains('dark') ? '#374151' : undefined
-          }
-        }
-      },
-      plugins: {
-        legend: {
-          display: false
-        }
-      }
-    };
+    this.animalId = this.route.snapshot.paramMap.get('id')!;
+    this.loadAnimal();
+    this.setupWebSocket();
   }
 
   ngOnDestroy() {
@@ -328,140 +333,216 @@ export class AnimalDetailComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  private setupWebSocket(animalId: string) {
-    // Connect to WebSocket
-    this.webSocketService.connect();
-
-    // Listen for animal updates
-    this.webSocketService.getAnimalUpdates()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(updatedAnimal => {
-        if (this.animal && updatedAnimal.id === this.animal.id) {
-          this.animal = {
-            ...this.animal,
-            ...updatedAnimal,
-            weightHistory: this.animal.weightHistory
-          };
-          if (this.isEditingName) {
-            this.editingName = updatedAnimal.name;
-          }
-        }
-      });
-
-    // Listen for animal deletions
-    this.webSocketService.getAnimalDeletions()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(deletedId => {
-        if (this.animal && deletedId === this.animal.id) {
-          this.router.navigate(['/animals']);
-        }
-      });
-
-    // Listen for weight updates
-    this.webSocketService.getWeightUpdates()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(weightEntry => {
-        if (this.animal && weightEntry.animal_id === this.animal.id) {
-          const existingIndex = this.animal.weightHistory.findIndex(w => w.id === weightEntry.id);
-          if (existingIndex !== -1) {
-            this.animal.weightHistory[existingIndex] = weightEntry;
-          } else {
-            this.animal.weightHistory.push(weightEntry);
-          }
-          this.updateChartData();
-          
-          // If we're editing this entry, update the form
-          if (this.editingEntry && this.editingEntry.id === weightEntry.id) {
-            this.editingEntry = {
-              id: weightEntry.id,
-              weight: weightEntry.weight,
-              date: new Date(weightEntry.date).toISOString().slice(0, 16)
-            };
-          }
-        }
-      });
-
-    // Listen for weight deletions
-    this.webSocketService.getWeightDeletions()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(({id, animal_id}) => {
-        if (this.animal && animal_id === this.animal.id) {
-          this.animal.weightHistory = this.animal.weightHistory.filter(w => w.id !== id);
-          this.updateChartData();
-          
-          // If we're editing this entry, cancel the edit
-          if (this.editingEntry && this.editingEntry.id === id) {
-            this.editingEntry = null;
-          }
-        }
-      });
-  }
-
-  loadAnimal(id: string) {
-    this.isLoading = true;
-    this.error = '';
-
-    // Load animal details
-    this.apiService.getAnimal(id).subscribe({
+  private loadAnimal() {
+    this.apiService.getAnimal(this.animalId).subscribe({
       next: (animal) => {
-        // Load weight history
-        this.apiService.getAnimalWeights(id).subscribe({
+        this.animal = {
+          ...animal,
+          weights: [],
+          weightHistory: [],
+          lastWeight: null,
+        };
+
+        this.apiService.getWeights(this.animalId).subscribe({
           next: (weights) => {
-            const sortedWeights = weights.sort((a, b) => 
-              new Date(a.date).getTime() - new Date(b.date).getTime()
+            this.animal!.weights = weights;
+            // Sort for table (newest first)
+            this.animal!.weightHistory = [...weights].sort(
+              (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
             );
-
-            this.animal = {
-              ...animal,
-              weightHistory: sortedWeights,
-              lastWeight: sortedWeights.length > 0 ? sortedWeights[sortedWeights.length - 1].weight : undefined
-            };
-
-            // Update chart data
-            this.updateChartData();
-            this.isLoading = false;
+            // Get latest weight from the sorted array
+            const latestWeight = this.animal!.weightHistory[0];
+            this.animal!.lastWeight = latestWeight ? latestWeight.weight : null;
+            this.updateChart();
           },
-          error: (error) => {
-            console.error('Error fetching weight history:', error);
-            this.error = 'Failed to load weight history. Please try again.';
-            this.isLoading = false;
-          }
         });
       },
-      error: (error) => {
-        console.error('Error fetching animal:', error);
-        this.error = 'Failed to load animal details. Please try again.';
-        this.isLoading = false;
-      }
+      error: () => {
+        this.router.navigate(['/animals']);
+      },
     });
   }
 
-  updateChartData() {
-    if (this.animal) {
-      const sortedEntries = [...this.animal.weightHistory].sort((a, b) => 
-        new Date(a.date).getTime() - new Date(b.date).getTime()
-      );
-      
-      this.weightChartData.labels = sortedEntries.map(entry => 
-        new Date(entry.date).toLocaleDateString()
-      );
-      this.weightChartData.datasets[0].data = sortedEntries.map(entry => entry.weight);
+  private setupWebSocket() {
+    this.webSocketService.connect();
 
-      // Force chart update
-      this.weightChartData = { ...this.weightChartData };
-    }
+    // Handle weight updates
+    this.webSocketService
+      .getWeightUpdates()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((weight) => {
+        if (this.animal && weight.animal_id === this.animal.id) {
+          const index = this.animal.weights.findIndex(
+            (w) => w.id === weight.id
+          );
+          if (index !== -1) {
+            this.animal.weights[index] = weight;
+          } else {
+            // Check if this weight was already added in the last second (to prevent duplicates)
+            const recentlyAdded = this.animal.weights.some(
+              (w) =>
+                Math.abs(
+                  new Date(w.date).getTime() - new Date(weight.date).getTime()
+                ) < 1000 && w.weight === weight.weight
+            );
+            if (!recentlyAdded) {
+              this.animal.weights.push(weight);
+            }
+          }
+          this.handleWeightUpdate();
+        }
+      });
+
+    // Handle weight deletions
+    this.webSocketService
+      .getWeightDeletions()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(({ id, animal_id }) => {
+        if (this.animal && animal_id === this.animal.id) {
+          this.animal.weights = this.animal.weights.filter((w) => w.id !== id);
+          this.handleWeightUpdate();
+        }
+      });
+
+    // Handle animal updates (including name and profile picture changes)
+    this.webSocketService
+      .getAnimalUpdates()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((updatedAnimal) => {
+        if (this.animal && updatedAnimal.id === this.animal.id) {
+          // Create a new object reference to trigger change detection
+          this.animal = {
+            ...this.animal, // Keep existing properties as base
+            name: updatedAnimal.name || this.animal.name,
+            description: updatedAnimal.description || this.animal.description,
+            birth_date: updatedAnimal.birth_date || this.animal.birth_date,
+            species: updatedAnimal.species || this.animal.species,
+            breed: updatedAnimal.breed || this.animal.breed,
+            profile_picture:
+              updatedAnimal.profile_picture || this.animal.profile_picture,
+            // Preserve weight-related data
+            weights: this.animal.weights,
+            weightHistory: this.animal.weightHistory,
+            lastWeight: this.animal.lastWeight,
+          };
+
+          // Exit name editing mode if active
+          if (this.isEditingName) {
+            this.isEditingName = false;
+            this.editingName = '';
+          }
+        }
+      });
+
+    // Handle animal deletions
+    this.webSocketService
+      .getAnimalDeletions()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((animalId) => {
+        if (this.animal && animalId === this.animal.id) {
+          this.router.navigate(['/animals']);
+        }
+      });
   }
 
-  onWeightAdded(entry: WeightEntry) {
-    // Remove manual addition since WebSocket will handle it
-    this.showAddDialog = false;
+  onProfilePictureUploaded(mediaId: string) {
+    if (!this.animal) return;
+
+    this.apiService
+      .updateAnimal(this.animal.id, {
+        profile_picture_id: mediaId,
+      })
+      .subscribe({
+        next: (updatedAnimal) => {
+          if (this.animal) {
+            this.animal = {
+              ...this.animal,
+              ...updatedAnimal,
+            };
+          }
+        },
+        error: (error) => {
+          console.error('Error updating profile picture:', error);
+        },
+      });
   }
 
-  startEdit(entry: WeightEntry) {
+  private updateChart() {
+    if (!this.animal) return;
+
+    // Sort chronologically for chart (oldest first)
+    const sortedWeights = [...this.animal.weights].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    const dates = sortedWeights.map((w) =>
+      new Date(w.date).toLocaleDateString()
+    );
+    const weights = sortedWeights.map((w) => w.weight);
+
+    this.weightChart = {
+      data: {
+        labels: dates,
+        datasets: [
+          {
+            label: 'Weight (kg)',
+            data: weights,
+            borderColor: 'rgb(59, 130, 246)',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            tension: 0.4,
+            fill: true,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: false,
+            grid: {
+              color: 'rgba(0, 0, 0, 0.1)',
+            },
+          },
+          x: {
+            grid: {
+              display: false,
+            },
+          },
+        },
+        plugins: {
+          legend: {
+            display: false,
+          },
+        },
+      },
+      type: 'line',
+    };
+  }
+
+  private handleWeightUpdate() {
+    if (!this.animal) return;
+
+    // Sort for table (newest first)
+    this.animal.weightHistory = [...this.animal.weights].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    // Get latest weight from the sorted array
+    const latestWeight = this.animal.weightHistory[0];
+    this.animal.lastWeight = latestWeight ? latestWeight.weight : null;
+    this.updateChart(); // Chart will sort chronologically internally
+  }
+
+  onWeightAdded(weight: WeightEntry) {
+    // Don't add the weight immediately, wait for WebSocket update
+    this.showAddWeightDialog = false;
+  }
+
+  startEditingWeight(weight: WeightEntry) {
     this.editingEntry = {
-      id: entry.id,
-      weight: entry.weight,
-      date: new Date(entry.date).toISOString().slice(0, 16)
+      id: weight.id,
+      weight: weight.weight,
+      date: new Date(weight.date).toISOString().slice(0, 16),
     };
   }
 
@@ -471,101 +552,52 @@ export class AnimalDetailComponent implements OnInit, OnDestroy {
     }
   }
 
-  updateEditingDate(date: string) {
-    if (this.editingEntry) {
-      this.editingEntry.date = date;
-    }
-  }
-
-  saveEdit() {
+  saveEditingWeight() {
     if (!this.editingEntry || !this.animal) return;
 
-    this.apiService.updateWeightEntry(
-      this.editingEntry.id,
-      this.editingEntry.weight,
-      new Date(this.editingEntry.date)
-    ).subscribe({
-      next: (updatedEntry) => {
-        const index = this.animal!.weightHistory.findIndex(w => w.id === updatedEntry.id);
-        if (index !== -1) {
-          this.animal!.weightHistory[index] = updatedEntry;
-          this.updateChartData();
-        }
-        this.editingEntry = null;
-      },
-      error: (error) => {
-        console.error('Error updating weight entry:', error);
-        this.error = 'Failed to update weight entry. Please try again.';
-      }
-    });
-  }
-
-  cancelEdit() {
-    this.editingEntry = null;
-  }
-
-  startEditName() {
-    if (!this.animal) return;
-    this.editingName = this.animal.name;
-    this.isEditingName = true;
-  }
-
-  saveName() {
-    if (!this.animal || !this.editingName.trim()) return;
-
-    this.apiService.updateAnimal(this.animal.id, { name: this.editingName.trim() }).subscribe({
-      next: (updatedAnimal) => {
-        if (this.animal) {
-          this.animal.name = updatedAnimal.name;
-        }
-        this.isEditingName = false;
-      },
-      error: (error) => {
-        console.error('Error updating animal name:', error);
-        this.error = 'Failed to update animal name. Please try again.';
-      }
-    });
-  }
-
-  cancelEditName() {
-    this.isEditingName = false;
-    this.editingName = '';
+    this.apiService
+      .updateWeight(this.editingEntry.id, {
+        weight: this.editingEntry.weight,
+        date: new Date(this.editingEntry.date),
+      })
+      .subscribe({
+        next: (updatedWeight) => {
+          if (this.animal) {
+            const index = this.animal.weights.findIndex(
+              (w) => w.id === updatedWeight.id
+            );
+            if (index !== -1) {
+              this.animal.weights[index] = updatedWeight;
+              this.handleWeightUpdate();
+            }
+          }
+          this.editingEntry = null;
+        },
+        error: (error) => {
+          console.error('Error updating weight:', error);
+        },
+      });
   }
 
   deleteWeight(weightId: string) {
     if (!this.animal) return;
 
-    if (confirm('Are you sure you want to delete this weight entry?')) {
-      this.apiService.deleteWeightEntry(weightId).subscribe({
-        next: () => {
-          if (this.animal) {
-            this.animal.weightHistory = this.animal.weightHistory.filter(w => w.id !== weightId);
-            if (this.animal.weightHistory.length > 0) {
-              const latestWeight = this.sortedWeightHistory[0];
-              this.animal.lastWeight = latestWeight.weight;
-            } else {
-              this.animal.lastWeight = undefined;
-            }
-            this.updateChartData();
-          }
-        },
-        error: (error) => {
-          console.error('Error deleting weight entry:', error);
-          this.error = 'Failed to delete weight entry. Please try again.';
+    this.apiService.deleteWeight(weightId).subscribe({
+      next: () => {
+        if (this.animal) {
+          this.animal.weights = this.animal.weights.filter(
+            (w) => w.id !== weightId
+          );
+          this.handleWeightUpdate();
         }
-      });
-    }
+      },
+      error: (error) => {
+        console.error('Error deleting weight:', error);
+      },
+    });
   }
 
-  getDeleteConfirmationMessage(): string {
-    if (!this.animal) return '';
-    
-    return this.animal.weightHistory.length > 0
-      ? `Are you sure you want to delete ${this.animal.name}? This will also delete all ${this.animal.weightHistory.length} weight entries.`
-      : `Are you sure you want to delete ${this.animal.name}?`;
-  }
-
-  confirmDelete() {
+  deleteAnimal() {
     if (!this.animal) return;
 
     this.apiService.deleteAnimal(this.animal.id).subscribe({
@@ -574,9 +606,67 @@ export class AnimalDetailComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('Error deleting animal:', error);
-        this.error = 'Failed to delete animal. Please try again.';
-        this.showDeleteConfirmation = false;
-      }
+      },
     });
   }
-} 
+
+  getProfilePictureUrl(): string | null {
+    if (!this.animal || !this.animal.profile_picture) return null;
+    const filename = this.animal.profile_picture.filename;
+    return filename.startsWith('http')
+      ? filename
+      : this.apiService.getMediaUrl(filename);
+  }
+
+  handleImageError(event: Event) {
+    const img = event.target as HTMLImageElement;
+    img.classList.add('opacity-50');
+    img.src = '/assets/images/placeholder-pet.svg';
+  }
+
+  startNameEdit() {
+    this.isEditingName = true;
+    this.editingName = this.animal!.name;
+  }
+
+  cancelNameEdit() {
+    this.isEditingName = false;
+    this.editingName = '';
+  }
+
+  saveName() {
+    if (!this.animal || !this.editingName.trim()) {
+      this.cancelNameEdit();
+      return;
+    }
+
+    this.apiService
+      .updateAnimal(this.animal.id, {
+        name: this.editingName.trim(),
+      })
+      .subscribe({
+        next: (updatedAnimal) => {
+          if (this.animal) {
+            this.animal = {
+              ...this.animal,
+              ...updatedAnimal,
+            };
+          }
+          this.isEditingName = false;
+        },
+        error: (error) => {
+          console.error('Error updating animal name:', error);
+          this.cancelNameEdit();
+        },
+      });
+  }
+
+  openImageUpload() {
+    const imageUploadElement = document.querySelector(
+      'app-image-upload input[type="file"]'
+    ) as HTMLInputElement;
+    if (imageUploadElement) {
+      imageUploadElement.click();
+    }
+  }
+}

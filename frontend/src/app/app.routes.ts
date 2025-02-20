@@ -1,21 +1,31 @@
 import { Routes } from '@angular/router';
 import { LoginComponent } from './components/login/login.component';
+import { RegisterComponent } from './components/register/register.component';
+import { PasswordResetComponent } from './components/password-reset/password-reset.component';
 import { AnimalsComponent } from './components/animals/animals.component';
 import { AnimalDetailComponent } from './components/animal-detail/animal-detail.component';
+import { ProfileComponent } from './components/profile/profile.component';
 import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
-  { path: '', redirectTo: '/login', pathMatch: 'full' },
+  { path: '', redirectTo: '/animals', pathMatch: 'full' },
   { path: 'login', component: LoginComponent },
-  { 
-    path: 'animals', 
+  { path: 'register', component: RegisterComponent },
+  { path: 'forgot-password', component: PasswordResetComponent },
+  { path: 'reset-password', component: PasswordResetComponent },
+  {
+    path: 'profile',
+    component: ProfileComponent,
+    canActivate: [authGuard],
+  },
+  {
+    path: 'animals',
     component: AnimalsComponent,
-    canActivate: [authGuard]
+    canActivate: [authGuard],
   },
-  { 
-    path: 'animals/:id', 
+  {
+    path: 'animals/:id',
     component: AnimalDetailComponent,
-    canActivate: [authGuard]
+    canActivate: [authGuard],
   },
-  { path: '**', redirectTo: '/login' }
 ];

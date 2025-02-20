@@ -1,6 +1,8 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import auth, animals, weights
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
+from .routers import auth, users, animals, weights, media
 from .database import engine
 from . import models
 from .websocket import manager
@@ -37,10 +39,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount media uploads directory
+media_dir = Path("media_uploads")
+media_dir.mkdir(exist_ok=True)
+app.mount("/media", StaticFiles(directory=str(media_dir)), name="media")
+
 # Include routers
 app.include_router(auth.router)
+app.include_router(users.router)
 app.include_router(animals.router)
 app.include_router(weights.router)
+app.include_router(media.router)
 
 
 @app.on_event("startup")
@@ -69,7 +78,7 @@ async def shutdown_event():
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to Pet Weight Monitoring API"}
+    return {"message": "Welcome to the Pet Weight Monitor API"}
 
 
 @app.websocket("/ws/{token}")
