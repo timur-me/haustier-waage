@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { PasswordService } from './password.service';
 
 interface PasswordResetRequest {
   email: string;
@@ -17,7 +18,10 @@ interface PasswordResetResponse {
 export class EmailService {
   private apiUrl = environment.apiUrl;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private passwordService: PasswordService
+  ) {}
 
   /**
    * Sends a password reset email to the specified email address
@@ -62,9 +66,9 @@ export class EmailService {
     newPassword: string
   ): Observable<PasswordResetResponse> {
     return this.http.post<PasswordResetResponse>(
-      `${this.apiUrl}/auth/reset-password/${token}`,
+      `${this.apiUrl}/auth/reset-password/${token}/confirm`,
       {
-        new_password: newPassword,
+        password: newPassword,
       }
     );
   }

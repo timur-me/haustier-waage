@@ -5,11 +5,18 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { NotificationService } from '../../services/notification.service';
 import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
+import { NotificationComponent } from '../notification/notification.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule, ThemeToggleComponent, RouterLink],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ThemeToggleComponent,
+    RouterLink,
+    NotificationComponent,
+  ],
   template: `
     <div
       class="min-h-screen bg-gray-100 dark:bg-dark-primary transition-colors"
@@ -18,6 +25,9 @@ import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
       <div class="absolute top-4 right-4">
         <app-theme-toggle />
       </div>
+
+      <!-- Notification Component -->
+      <app-notification />
 
       <!-- Centered Login Form -->
       <div
@@ -38,9 +48,22 @@ import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
             </h2>
           </div>
 
+          <!-- Error message -->
+          <div
+            *ngIf="error"
+            class="bg-red-50 dark:bg-red-900/20 p-4 rounded-md"
+          >
+            <p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+          </div>
+
           <!-- Login Form -->
           <div class="mt-8">
-            <div class="rounded-md shadow-sm space-y-4">
+            <form
+              #loginForm="ngForm"
+              class="space-y-4"
+              (ngSubmit)="onSubmit(loginForm)"
+              novalidate
+            >
               <div>
                 <label for="username" class="sr-only">Username</label>
                 <input
@@ -51,6 +74,7 @@ import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
                   [(ngModel)]="username"
                   class="input w-full"
                   placeholder="Username"
+                  [disabled]="isLoading"
                 />
               </div>
               <div>
@@ -63,49 +87,38 @@ import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
                   [(ngModel)]="password"
                   class="input w-full"
                   placeholder="Password"
+                  [disabled]="isLoading"
                 />
               </div>
-            </div>
 
-            <!-- Error Message -->
-            <div
-              *ngIf="error"
-              class="mt-4 text-red-500 text-sm text-center animate-fadeIn"
-            >
-              {{ error }}
-            </div>
-
-            <!-- Login Button -->
-            <div class="mt-6">
-              <button
-                (click)="login()"
-                class="btn btn-primary w-full flex justify-center items-center"
-                [disabled]="isLoading"
-              >
-                <svg
-                  *ngIf="isLoading"
-                  class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
+              <!-- Login Button -->
+              <div class="mt-4">
+                <button
+                  type="submit"
+                  [disabled]="isLoading || !loginForm.form.valid"
+                  class="btn btn-primary w-full flex justify-center items-center"
                 >
-                  <circle
-                    class="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    stroke-width="4"
-                  ></circle>
-                  <path
-                    class="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                {{ isLoading ? 'Signing in...' : 'Sign in' }}
-              </button>
-            </div>
+                  <span *ngIf="isLoading" class="animate-spin mr-2">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <circle
+                        class="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="4"
+                      ></circle>
+                      <path
+                        class="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                  </span>
+                  {{ isLoading ? 'Signing in...' : 'Sign in' }}
+                </button>
+              </div>
+            </form>
 
             <!-- Links -->
             <div class="mt-6 text-center text-sm space-y-2">
@@ -159,9 +172,8 @@ export class LoginComponent implements OnInit {
     }
   }
 
-  async login() {
-    if (!this.username || !this.password) {
-      this.error = 'Username and password are required';
+  async onSubmit(form: any) {
+    if (!form.valid) {
       return;
     }
 
@@ -170,10 +182,12 @@ export class LoginComponent implements OnInit {
 
     try {
       await this.authService.login(this.username, this.password);
+      this.notificationService.showSuccess('Successfully logged in');
       this.router.navigate(['/']);
     } catch (error: any) {
-      this.error = error.error?.detail || 'An error occurred during login';
+      this.error = error.message || 'An error occurred during login';
       this.isLoading = false;
+      form.form.setErrors({ invalidLogin: true });
     }
   }
 }

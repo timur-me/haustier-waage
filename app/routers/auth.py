@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, UTC
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Path
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
@@ -11,6 +11,7 @@ from ..utils.email import send_password_reset_email, send_verification_email
 import os
 from dotenv import load_dotenv
 import uuid
+import bcrypt
 import logging
 import traceback
 
@@ -29,6 +30,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -72,12 +74,21 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
 
 @router.post("/login", response_model=schemas.Token)
 async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    credentials: schemas.LoginRequest,
     db: Session = Depends(get_db)
 ):
     user = db.query(models.User).filter(
-        models.User.username == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.password_hash, user.salt):
+        models.User.username == credentials.username).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Verify password using bcrypt
+    if not verify_password(credentials.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -108,8 +119,8 @@ async def register_user(user: schemas.UserCreate, db: Session = Depends(get_db))
             detail="Email already registered"
         )
 
-    # Hash password
-    password_hash, salt = hash_password(user.password)
+    # Hash the password
+    password_hash = hash_password(user.password)
 
     # Generate verification token
     verification_token = generate_reset_token()
@@ -120,7 +131,6 @@ async def register_user(user: schemas.UserCreate, db: Session = Depends(get_db))
         username=user.username,
         email=user.email,
         password_hash=password_hash,
-        salt=salt,
         email_verified=False,
         reset_token=verification_token,
         reset_token_expires=verification_token_expires
@@ -187,10 +197,10 @@ async def request_password_reset(email: schemas.PasswordReset, db: Session = Dep
     user = db.query(models.User).filter(
         models.User.email == email.email).first()
     if not user:
-        logger.info(f"No user found with email: {email.email}")
+        logger.debug(f"No user found with email: {email.email}")
         return response
 
-    logger.info(f"User found: {user.username}")
+    logger.debug(f"User found: {user.username}")
 
     try:
         # Generate reset token
@@ -201,11 +211,11 @@ async def request_password_reset(email: schemas.PasswordReset, db: Session = Dep
         user.reset_token = reset_token
         user.reset_token_expires = reset_token_expires
         db.commit()
-        logger.info(
+        logger.debug(
             f"Reset token generated and saved for user: {user.username}")
 
         # Send reset email
-        logger.info(f"Attempting to send reset email to: {email.email}")
+        logger.debug(f"Attempting to send reset email to: {email.email}")
         await send_password_reset_email(
             to_email=email.email,
             reset_token=reset_token,
@@ -215,12 +225,12 @@ async def request_password_reset(email: schemas.PasswordReset, db: Session = Dep
 
     except Exception as e:
         logger.error(f"Failed to send reset email: {str(e)}")
-        logger.error(f"Full error traceback: {traceback.format_exc()}")
+        logger.debug(f"Full error traceback: {traceback.format_exc()}")
         # Rollback the token update since email failed
         user.reset_token = None
         user.reset_token_expires = None
         db.commit()
-        logger.info("Reset token cleared due to email failure")
+        logger.debug("Reset token cleared due to email failure")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to send reset email. Please try again later."
@@ -229,31 +239,52 @@ async def request_password_reset(email: schemas.PasswordReset, db: Session = Dep
     return response
 
 
-@router.post("/reset-password/{token}")
-async def reset_password(token: str, new_password: str, db: Session = Depends(get_db)):
-    """Reset user's password using reset token."""
+@router.post("/reset-password")
+def reset_password(request: schemas.PasswordReset, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(
-        models.User.reset_token == token,
-        models.User.reset_token_expires > datetime.now(UTC)
-    ).first()
-
+        models.User.email == request.email).first()
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired reset token"
-        )
+        raise HTTPException(status_code=404, detail="User not found")
 
-    # Hash new password
-    password_hash, salt = hash_password(new_password)
+    # Generate reset token
+    reset_token = create_access_token(
+        data={"sub": user.username, "type": "reset"},
+        expires_delta=timedelta(minutes=15)
+    )
 
-    # Update user
-    user.password_hash = password_hash
-    user.salt = salt
+    # Store reset token in database
+    user.reset_token = reset_token
+    user.reset_token_expires = datetime.now(UTC) + timedelta(minutes=15)
+    db.commit()
+
+    # Send reset email
+    send_password_reset_email(user.email, reset_token)
+    return {"message": "Password reset email sent"}
+
+
+@router.post("/reset-password/{token}/confirm")
+def reset_password_confirm(
+    token: str = Path(..., description="Reset token from email"),
+    request: schemas.PasswordResetConfirm = None,
+    db: Session = Depends(get_db)
+):
+    # Find user by reset token
+    user = db.query(models.User).filter(
+        models.User.reset_token == token).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid reset token")
+
+    # Check if token is expired
+    if user.reset_token_expires and user.reset_token_expires < datetime.now(UTC):
+        raise HTTPException(status_code=400, detail="Reset token has expired")
+
+    # Hash and update password
+    user.password_hash = hash_password(request.password)
     user.reset_token = None
     user.reset_token_expires = None
     db.commit()
 
-    return {"message": "Password reset successfully"}
+    return {"message": "Password has been reset successfully"}
 
 
 @router.post("/refresh-token", response_model=schemas.Token)

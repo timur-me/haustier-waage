@@ -25,7 +25,6 @@ class User(Base):
     email = Column(String, unique=True, nullable=True)
     email_verified = Column(Boolean, nullable=False, server_default='false')
     password_hash = Column(String, nullable=True)
-    salt = Column(String, nullable=True)
     reset_token = Column(String, nullable=True)
     reset_token_expires = Column(DateTime(timezone=True), nullable=True)
     first_name = Column(String(50), nullable=True)

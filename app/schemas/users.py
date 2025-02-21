@@ -11,9 +11,9 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    password_hash: str
-    salt: str
+    username: str
     email: EmailStr  # Make email required for registration
+    password: str  # Plain password
 
 
 class UserUpdate(BaseModel):
@@ -25,6 +25,7 @@ class UserProfile(BaseModel):
     id: UUID4
     username: str
     email: Optional[str] = None
+    email_verified: bool
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     profile_picture: Optional[MediaResponse] = None
@@ -47,8 +48,7 @@ class PasswordReset(BaseModel):
 
 
 class PasswordResetConfirm(BaseModel):
-    token: str
-    new_password: str
+    password: str  # Plain password
 
 
 class Token(BaseModel):
@@ -65,3 +65,8 @@ class TokenData(BaseModel):
 class PasswordUpdate(BaseModel):
     current_password: str
     new_password: str
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str  # Plain password

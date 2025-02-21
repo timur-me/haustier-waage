@@ -25,6 +25,7 @@ async def get_current_user_profile(
         "id": current_user.id,
         "username": current_user.username,
         "email": current_user.email,
+        "email_verified": current_user.email_verified,
         "first_name": current_user.first_name,
         "last_name": current_user.last_name,
         "profile_picture": {

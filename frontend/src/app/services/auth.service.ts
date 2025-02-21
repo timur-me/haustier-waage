@@ -1,35 +1,15 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
-import { PasswordService } from './password.service';
-import { environment } from '../../environments/environment';
+import { HttpClient } from '@angular/common/http';
+import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
 import { Router } from '@angular/router';
-
-interface User {
-  id: number;
-  username: string;
-  email: string;
-}
+import { environment } from '../../environments/environment';
+import { NotificationService } from './notification.service';
+import { User } from '../models/user.model';
 
 interface AuthResponse {
   access_token: string;
   token_type: string;
   expires_in: number;
-}
-
-interface RegisterRequest {
-  username: string;
-  email: string;
-  password: string;
-}
-
-interface PasswordResetRequest {
-  email: string;
-}
-
-interface PasswordResetConfirm {
-  token: string;
-  new_password: string;
 }
 
 @Injectable({
@@ -40,28 +20,38 @@ export class AuthService {
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   currentUser$ = this.currentUserSubject.asObservable();
   private tokenRefreshTimer: any;
-  private isAuthenticatedSubject = new BehaviorSubject<boolean>(
-    this.hasValidToken()
-  );
+  private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
 
   constructor(
     private http: HttpClient,
-    private passwordService: PasswordService,
-    private router: Router
+    private router: Router,
+    private notificationService: NotificationService
   ) {
-    const user = localStorage.getItem('user');
-    if (user) {
-      this.currentUserSubject.next(JSON.parse(user));
+    // Check for existing token and load user data
+    const token = localStorage.getItem('token');
+    if (token) {
+      this.isAuthenticatedSubject.next(true);
+      this.loadUserData().catch(() => this.logout());
     }
-    this.initializeTokenRefresh();
   }
 
   get isAuthenticated$(): Observable<boolean> {
     return this.isAuthenticatedSubject.asObservable();
   }
 
-  validatePassword(password: string): { isValid: boolean; errors: string[] } {
-    return this.passwordService.validatePassword(password);
+  private async loadUserData(): Promise<void> {
+    try {
+      const user = await firstValueFrom(
+        this.http.get<User>(`${environment.apiUrl}/api/users/me`)
+      );
+      if (user) {
+        console.log('Loaded user data:', user); // Debug log
+        this.currentUserSubject.next(user);
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      throw error;
+    }
   }
 
   async register(
@@ -69,81 +59,93 @@ export class AuthService {
     email: string,
     password: string
   ): Promise<void> {
-    const { hash: password_hash, salt } =
-      await this.passwordService.hashPassword(password);
+    try {
+      const response = await firstValueFrom(
+        this.http.post<AuthResponse>(`${this.API_URL}/register`, {
+          username,
+          email,
+          password,
+        })
+      );
 
-    const response = await this.http
-      .post<AuthResponse>(`${this.API_URL}/register`, {
-        username,
-        email,
-        password_hash,
-        salt,
-      })
-      .toPromise();
-
-    if (response) {
-      this.handleAuthResponse(response);
+      await this.handleAuthResponse(response);
+      this.notificationService.showSuccess(
+        'Registration successful! Please check your email to verify your account.'
+      );
+      await this.router.navigate(['/verify-email-notice']);
+    } catch (error: any) {
+      if (error.status === 409) {
+        this.notificationService.showError('Email already registered');
+      } else {
+        this.notificationService.showError(
+          'An error occurred during registration'
+        );
+      }
+      throw error;
     }
   }
 
-  async login(username: string, password: string): Promise<AuthResponse> {
-    const formData = new URLSearchParams();
-    formData.append('username', username);
-    formData.append('password', password);
-
-    const headers = new HttpHeaders().set(
-      'Content-Type',
-      'application/x-www-form-urlencoded'
-    );
-
+  async login(username: string, password: string): Promise<void> {
     try {
-      const response = await this.http
-        .post<AuthResponse>(`${this.API_URL}/login`, formData.toString(), {
-          headers,
+      const response = await firstValueFrom(
+        this.http.post<AuthResponse>(`${this.API_URL}/login`, {
+          username,
+          password,
         })
-        .toPromise();
+      );
 
-      if (!response) {
-        throw new Error('Username or password is incorrect');
+      await this.handleAuthResponse(response);
+      this.notificationService.showSuccess('Successfully logged in');
+
+      // Load user data and check email verification status
+      await this.loadUserData();
+      const user = this.getCurrentUser();
+      console.log('Current user state:', user); // Debug log
+
+      if (!user) {
+        throw new Error('Failed to load user data after login');
       }
 
-      localStorage.setItem('token', response.access_token);
-      this.isAuthenticatedSubject.next(true);
-      this.scheduleTokenRefresh(response.expires_in);
-      return response;
+      if (!user.email_verified) {
+        console.log('Email not verified, redirecting to notice page'); // Debug log
+        await this.router.navigate(['/verify-email-notice']);
+      } else {
+        console.log('Email verified, redirecting to main page'); // Debug log
+        await this.router.navigate(['/']);
+      }
     } catch (error: any) {
       if (error.status === 401) {
-        throw new Error('Username or password is incorrect');
+        throw new Error('Invalid credentials');
       } else if (error.status === 429) {
         throw new Error('Too many login attempts. Please try again later.');
       } else {
-        throw new Error('An error occurred during login. Please try again.');
+        throw new Error('An error occurred during login');
       }
     }
   }
 
-  logout(): void {
+  async logout(): Promise<void> {
     localStorage.removeItem('token');
-    localStorage.removeItem('user');
     this.currentUserSubject.next(null);
     this.isAuthenticatedSubject.next(false);
     if (this.tokenRefreshTimer) {
       clearTimeout(this.tokenRefreshTimer);
     }
-    this.router.navigate(['/login']);
+    await this.router.navigate(['/login']);
   }
 
   isAuthenticated(): boolean {
-    return !!localStorage.getItem('token');
+    return this.isAuthenticatedSubject.value;
   }
 
   getCurrentUser(): User | null {
     return this.currentUserSubject.value;
   }
 
-  private handleAuthResponse(response: AuthResponse): void {
+  private async handleAuthResponse(response: AuthResponse): Promise<void> {
     localStorage.setItem('token', response.access_token);
     this.isAuthenticatedSubject.next(true);
+    await this.loadUserData();
     this.scheduleTokenRefresh(response.expires_in);
   }
 
@@ -151,56 +153,41 @@ export class AuthService {
     return !!localStorage.getItem('token');
   }
 
-  private initializeTokenRefresh(): void {
-    if (this.hasValidToken()) {
-      this.refreshToken().subscribe({
-        error: () => this.logout(),
-      });
-    }
-  }
-
   private scheduleTokenRefresh(expiresIn: number): void {
     if (this.tokenRefreshTimer) {
       clearTimeout(this.tokenRefreshTimer);
     }
 
-    // Refresh token 1 minute before expiry
+    // Refresh 1 minute before expiration
     const refreshTime = (expiresIn - 60) * 1000;
-    if (refreshTime <= 0) {
-      this.logout();
-      return;
-    }
-
     this.tokenRefreshTimer = setTimeout(() => {
       this.refreshToken().subscribe({
-        error: () => this.logout(),
+        next: async (response) => {
+          await this.handleAuthResponse(response);
+        },
+        error: () => {
+          this.logout();
+        },
       });
     }, refreshTime);
   }
 
   refreshToken(): Observable<AuthResponse> {
-    return this.http
-      .post<AuthResponse>(`${this.API_URL}/refresh-token`, {})
-      .pipe(tap((response) => this.handleAuthResponse(response)));
+    return this.http.post<AuthResponse>(`${this.API_URL}/refresh-token`, {});
   }
 
-  requestPasswordReset(email: string): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(
-      `${this.API_URL}/password-reset-request`,
-      { email }
-    );
-  }
-
-  confirmPasswordReset(
-    token: string,
-    new_password: string
-  ): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(
-      `${this.API_URL}/password-reset-confirm`,
-      {
-        token,
-        new_password,
+  async isEmailVerified(): Promise<boolean> {
+    let user = this.currentUserSubject.value;
+    if (!user) {
+      try {
+        await this.loadUserData();
+        user = this.currentUserSubject.value;
+      } catch (error) {
+        console.error('Failed to load user data:', error);
+        return false;
       }
-    );
+    }
+    console.log('Checking email verification status:', user?.email_verified); // Debug log
+    return user?.email_verified ?? false;
   }
 }

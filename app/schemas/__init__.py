@@ -9,7 +9,8 @@ from .users import (
     PasswordReset,
     PasswordResetConfirm,
     Token,
-    TokenData
+    TokenData,
+    LoginRequest
 )
 
 from .animals import (
@@ -39,6 +40,7 @@ __all__ = [
     "PasswordResetConfirm",
     "Token",
     "TokenData",
+    "LoginRequest",
 
     # Animals
     "AnimalBase",

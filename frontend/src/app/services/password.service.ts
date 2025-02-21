@@ -5,17 +5,9 @@ import * as bcrypt from 'bcryptjs';
   providedIn: 'root',
 })
 export class PasswordService {
-  private readonly SALT_ROUNDS = 10;
+  private readonly SALT_ROUNDS = 0;
 
   constructor() {}
-
-  async hashPassword(
-    password: string
-  ): Promise<{ hash: string; salt: string }> {
-    const salt = await bcrypt.genSalt(this.SALT_ROUNDS);
-    const hash = await bcrypt.hash(password, salt);
-    return { hash, salt };
-  }
 
   validatePassword(password: string): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
@@ -40,5 +32,12 @@ export class PasswordService {
       isValid: errors.length === 0,
       errors,
     };
+  }
+
+  async hashPassword(password: string): Promise<{ hash: string }> {
+    // Generate a salt and hash the password
+    const hash = await bcrypt.hash(password, this.SALT_ROUNDS);
+    console.log('Hashing password: ', password, hash);
+    return { hash };
   }
 }

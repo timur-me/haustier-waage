@@ -3,60 +3,73 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { EmailService } from '../../services/email.service';
 import { NotificationService } from '../../services/notification.service';
+import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
 
 @Component({
   selector: 'app-email-verification',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ThemeToggleComponent],
   template: `
     <div
-      class="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8"
+      class="min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-white dark:from-gray-900 dark:via-blue-900 dark:to-gray-900 flex items-center justify-center relative"
     >
-      <div class="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Email Verification
-        </h2>
-        <p class="mt-2 text-center text-sm text-gray-600">
-          {{ message }}
-        </p>
+      <!-- Theme Toggle -->
+      <div class="absolute top-4 right-4">
+        <app-theme-toggle />
       </div>
 
-      <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <div class="flex justify-center">
-            <div
-              *ngIf="isLoading"
-              class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"
-            ></div>
+      <div class="w-full max-w-md px-6 py-8">
+        <div
+          class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 text-center"
+        >
+          <!-- Logo -->
+          <img
+            src="assets/images/logo.svg"
+            alt="Pet Weight Monitor"
+            class="w-24 h-24 mx-auto mb-6"
+          />
 
-            <div *ngIf="!isLoading && isVerified" class="text-center">
+          <!-- Loading State -->
+          <div *ngIf="isLoading" class="space-y-4">
+            <div
+              class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"
+            ></div>
+            <p class="text-gray-600 dark:text-gray-300">{{ message }}</p>
+          </div>
+
+          <!-- Success State -->
+          <div *ngIf="!isLoading && isVerified" class="space-y-6">
+            <div class="text-green-500 dark:text-green-400">
               <svg
-                class="mx-auto h-12 w-12 text-green-600"
+                class="h-16 w-16 mx-auto animate-bounce"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
                 <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
                   d="M5 13l4 4L19 7"
                 />
               </svg>
-              <p class="mt-2 text-sm text-gray-600">
-                Your email has been verified successfully!
-              </p>
-              <button
-                (click)="goToLogin()"
-                class="mt-4 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                Go to Login
-              </button>
             </div>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+              {{ message }}
+            </h2>
+            <button
+              (click)="goToLogin()"
+              class="w-full px-4 py-2 text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg transition-all duration-200 transform hover:scale-105"
+            >
+              Continue to Login
+            </button>
+          </div>
 
-            <div *ngIf="!isLoading && !isVerified && error" class="text-center">
+          <!-- Error State -->
+          <div *ngIf="!isLoading && !isVerified && error" class="space-y-6">
+            <div class="text-red-500 dark:text-red-400">
               <svg
-                class="mx-auto h-12 w-12 text-red-600"
+                class="h-16 w-16 mx-auto"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -64,20 +77,19 @@ import { NotificationService } from '../../services/notification.service';
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18L18 6M6 6l12 12"
+                  d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
                 />
               </svg>
-              <p class="mt-2 text-sm text-red-600">
-                {{ error }}
-              </p>
-              <button
-                (click)="goToLogin()"
-                class="mt-4 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                Go to Login
-              </button>
             </div>
+            <h2 class="text-xl font-semibold text-red-600 dark:text-red-400">
+              {{ error }}
+            </h2>
+            <button
+              (click)="goToLogin()"
+              class="w-full px-4 py-2 text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg transition-all duration-200 transform hover:scale-105"
+            >
+              Back to Login
+            </button>
           </div>
         </div>
       </div>

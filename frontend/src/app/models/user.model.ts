@@ -3,7 +3,7 @@ import { MediaResponse } from './media.model';
 export interface User {
   id: string;
   username: string;
-  email: string | null;
+  email: string;
   email_verified: boolean;
   first_name: string | null;
   last_name: string | null;

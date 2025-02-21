@@ -1,52 +1,47 @@
 import bcrypt
 import secrets
 import string
-import re
-from typing import Tuple, Dict
+import logging
+from typing import Dict
+
+logger = logging.getLogger(__name__)
 
 
-def hash_password(password: str) -> Tuple[str, str]:
+def hash_password(password: str) -> str:
     """
-    Hash a password using bcrypt with a random salt.
+    Hash a password using bcrypt.
 
     Args:
-        password: The plain text password to hash
+        password: The plain password to hash
 
     Returns:
-        A tuple of (hashed_password, salt) as strings
+        str: The hashed password
     """
-    # Generate a random salt
-    salt = bcrypt.gensalt()
-
-    # Hash the password with the salt
-    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-
-    # Return both as strings for storage
-    return hashed.decode('utf-8'), salt.decode('utf-8')
-
-
-def verify_password(password: str, hashed_password: str, salt: str) -> bool:
-    """
-    Verify a password against its hash and salt.
-
-    Args:
-        password: The plain text password to verify
-        hashed_password: The stored hashed password
-        salt: The stored salt used in hashing
-
-    Returns:
-        True if the password matches, False otherwise
-    """
-    # Encode strings back to bytes
+    # Hash the password with bcrypt (it handles salt internally)
     password_bytes = password.encode('utf-8')
-    salt_bytes = salt.encode('utf-8')
-    hashed_bytes = hashed_password.encode('utf-8')
+    hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+    return hashed.decode('utf-8')
 
-    # Hash the provided password with the stored salt
-    computed_hash = bcrypt.hashpw(password_bytes, salt_bytes)
 
-    # Compare the computed hash with the stored hash
-    return computed_hash == hashed_bytes
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Verify a password against a stored hash.
+
+    Args:
+        plain_password: The plain password to verify
+        hashed_password: The stored hashed password to compare against
+
+    Returns:
+        bool: True if the password matches, False otherwise
+    """
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode('utf-8'),
+            hashed_password.encode('utf-8')
+        )
+    except Exception as e:
+        logger.error(f"Error verifying password: {e}")
+        return False
 
 
 def generate_reset_token(length: int = 32) -> str:
@@ -70,31 +65,13 @@ class PasswordError(Exception):
 def validate_password(password: str) -> Dict[str, bool]:
     """
     Validate password strength.
-    Returns a dictionary of validation results or raises PasswordError.
+
+    Returns a dictionary with validation results for different criteria.
     """
-    validations = {
+    return {
         'length': len(password) >= 8,
-        'uppercase': bool(re.search(r'[A-Z]', password)),
-        'lowercase': bool(re.search(r'[a-z]', password)),
-        'numbers': bool(re.search(r'[0-9]', password)),
-        'special': bool(re.search(r'[!@#$%^&*(),.?":{}|<>]', password))
+        'uppercase': any(c.isupper() for c in password),
+        'lowercase': any(c.islower() for c in password),
+        'digit': any(c.isdigit() for c in password),
+        'special': any(not c.isalnum() for c in password)
     }
-
-    if not all(validations.values()):
-        errors = []
-        if not validations['length']:
-            errors.append("Password must be at least 8 characters long")
-        if not validations['uppercase']:
-            errors.append(
-                "Password must contain at least one uppercase letter")
-        if not validations['lowercase']:
-            errors.append(
-                "Password must contain at least one lowercase letter")
-        if not validations['numbers']:
-            errors.append("Password must contain at least one number")
-        if not validations['special']:
-            errors.append(
-                "Password must contain at least one special character")
-        raise PasswordError(". ".join(errors))
-
-    return validations

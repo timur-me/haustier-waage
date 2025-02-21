@@ -10,6 +10,8 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { EmailService } from '../../services/email.service';
 import { NotificationService } from '../../services/notification.service';
 import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
+import { NotificationComponent } from '../notification/notification.component';
+import { catchError, timeout, throwError } from 'rxjs';
 
 @Component({
   selector: 'app-password-reset',
@@ -19,6 +21,7 @@ import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
     ReactiveFormsModule,
     RouterLink,
     ThemeToggleComponent,
+    NotificationComponent,
   ],
   template: `
     <div
@@ -28,6 +31,9 @@ import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
       <div class="absolute top-4 right-4">
         <app-theme-toggle />
       </div>
+
+      <!-- Notification Component -->
+      <app-notification />
 
       <!-- Centered Form -->
       <div
@@ -232,57 +238,88 @@ export class PasswordResetComponent implements OnInit {
       : { mismatch: true };
   }
 
-  onSubmit() {
+  async onSubmit() {
     if (this.resetForm.invalid) return;
 
     this.isLoading = true;
 
     if (this.token) {
       // Reset password
+      try {
+        const resetObservable = this.emailService.resetPassword(
+          this.token,
+          this.resetForm.get('password')?.value
+        );
+
+        resetObservable
+          .pipe(
+            timeout(7500),
+            catchError((error) => {
+              let errorMessage = 'Failed to reset password';
+              if (error.name === 'TimeoutError') {
+                errorMessage = 'Request timed out. Please try again.';
+              } else if (error.status === 400) {
+                errorMessage =
+                  'Invalid or expired reset link. Please request a new one.';
+              } else {
+                errorMessage = error.error?.detail || errorMessage;
+              }
+              this.notificationService.showError(errorMessage);
+              return throwError(() => error);
+            })
+          )
+          .subscribe({
+            next: () => {
+              this.notificationService.showSuccess(
+                'Password reset successfully. You can now login with your new password.'
+              );
+              this.router.navigate(['/login']);
+            },
+            error: () => {
+              this.isLoading = false;
+            },
+          });
+      } catch (error) {
+        this.isLoading = false;
+        this.notificationService.showError(
+          'An error occurred. Please try again.'
+        );
+      }
+    } else {
+      // Request password reset
+      const email = this.resetForm.get('email')?.value;
+      console.log('Requesting password reset for:', email);
+
       this.emailService
-        .resetPassword(this.token, this.resetForm.get('password')?.value)
+        .sendPasswordResetEmail(email)
+        .pipe(
+          timeout(7500),
+          catchError((error) => {
+            let errorMessage = 'Failed to send reset email';
+            if (error.name === 'TimeoutError') {
+              errorMessage = 'Request timed out. Please try again.';
+            } else {
+              errorMessage = error.error?.detail || errorMessage;
+            }
+            this.notificationService.showError(errorMessage);
+            return throwError(() => error);
+          })
+        )
         .subscribe({
-          next: () => {
+          next: (response) => {
+            console.log('Password reset response:', response);
             this.notificationService.showSuccess(
-              'Password has been reset successfully'
+              'If an account exists with this email, you will receive a password reset link shortly. Please check your email.'
             );
-            this.router.navigate(['/login']);
+            this.resetForm.reset();
           },
-          error: (error) => {
-            console.error('Password reset error:', error);
-            this.notificationService.showError(
-              error.error?.detail || 'Failed to reset password'
-            );
+          error: () => {
             this.isLoading = false;
           },
           complete: () => {
             this.isLoading = false;
           },
         });
-    } else {
-      // Request password reset
-      const email = this.resetForm.get('email')?.value;
-      console.log('Requesting password reset for:', email);
-
-      this.emailService.sendPasswordResetEmail(email).subscribe({
-        next: (response) => {
-          console.log('Password reset response:', response);
-          this.notificationService.showSuccess(
-            'If an account exists with this email, you will receive a password reset link shortly. Please check your email.'
-          );
-          this.resetForm.reset();
-        },
-        error: (error) => {
-          console.error('Password reset request error:', error);
-          this.notificationService.showError(
-            error.error?.detail ||
-              'Failed to send reset email. Please try again later.'
-          );
-        },
-        complete: () => {
-          this.isLoading = false;
-        },
-      });
     }
   }
 }

@@ -233,12 +233,13 @@ export class RegisterComponent {
   }
 
   async register() {
-    if (this.password !== this.confirmPassword) {
-      this.error = 'Passwords do not match';
+    if (!this.username || !this.email || !this.password) {
+      this.error = 'All fields are required';
       return;
     }
 
-    if (this.emailError) {
+    if (this.password !== this.confirmPassword) {
+      this.error = 'Passwords do not match';
       return;
     }
 
@@ -247,10 +248,10 @@ export class RegisterComponent {
 
     try {
       await this.authService.register(this.username, this.email, this.password);
-      this.router.navigate(['/animals']);
+      this.router.navigate(['/verify-email-notice']);
     } catch (error: any) {
-      this.error = error.error?.detail || 'Failed to register';
-    } finally {
+      this.error =
+        error.error?.detail || 'An error occurred during registration';
       this.isLoading = false;
     }
   }

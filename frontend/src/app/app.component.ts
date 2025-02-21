@@ -1,22 +1,34 @@
 import { Component, OnInit } from '@angular/core';
-import { RouterOutlet, RouterLink } from '@angular/router';
+import { RouterOutlet, RouterLink, Router } from '@angular/router';
 import { ThemeToggleComponent } from './components/theme-toggle/theme-toggle.component';
 import { ThemeService } from './services/theme.service';
 import { AuthService } from './services/auth.service';
 import { CommonModule } from '@angular/common';
+import { NotificationComponent } from './components/notification/notification.component';
 import { take } from 'rxjs';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, ThemeToggleComponent, CommonModule],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    ThemeToggleComponent,
+    CommonModule,
+    NotificationComponent,
+  ],
   template: `
     <div
       class="min-h-screen bg-gray-100 dark:bg-dark-primary dark:text-dark-text transition-colors"
     >
+      <!-- Global Notification Component -->
+      <app-notification />
+
       <header
         class="bg-white dark:bg-dark-secondary shadow transition-colors"
-        *ngIf="authService.isAuthenticated$ | async"
+        *ngIf="
+          (authService.isAuthenticated$ | async) && !isEmailVerificationRoute()
+        "
       >
         <div
           class="container mx-auto px-4 py-4 flex justify-between items-center"
@@ -47,7 +59,12 @@ import { take } from 'rxjs';
           </div>
         </div>
       </header>
-      <main class="container mx-auto px-4 py-8">
+      <main
+        [class.container]="!isEmailVerificationRoute()"
+        [class.mx-auto]="!isEmailVerificationRoute()"
+        [class.px-4]="!isEmailVerificationRoute()"
+        [class.py-8]="!isEmailVerificationRoute()"
+      >
         <router-outlet />
       </main>
     </div>
@@ -57,7 +74,8 @@ import { take } from 'rxjs';
 export class AppComponent implements OnInit {
   constructor(
     private themeService: ThemeService,
-    public authService: AuthService
+    public authService: AuthService,
+    private router: Router
   ) {}
 
   ngOnInit() {
@@ -65,6 +83,10 @@ export class AppComponent implements OnInit {
     this.themeService.darkMode$.pipe(take(1)).subscribe((isDark) => {
       this.themeService.setDarkMode(isDark);
     });
+  }
+
+  isEmailVerificationRoute(): boolean {
+    return this.router.url.includes('/verify-email');
   }
 
   logout() {
