@@ -1,5 +1,4 @@
-.github
-.git
+
 
 # Python
 .DS_Store
@@ -29,6 +28,7 @@ wheels/
 venv/
 ENV/
 env/
+tests/.venv_test
 
 # IDE
 .idea/

@@ -1,5 +1,5 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:8000',
-  wsUrl: 'ws://localhost:8000/ws',
+  apiUrl: 'http://pet.executable.fun:8000',
+  wsUrl: 'ws://pet.executable.fun:8000/ws',
 };
