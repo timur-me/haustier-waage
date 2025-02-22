@@ -1,3 +1,6 @@
+.github
+.git
+
 # Python
 .DS_Store
 .pytest_cache
