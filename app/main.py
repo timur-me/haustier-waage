@@ -8,6 +8,7 @@ from . import models
 from .websocket import manager
 from . import auth as auth_module
 import logging
+import os
 
 # Configure logging
 logging.basicConfig(
@@ -30,14 +31,14 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if not os.getenv("DISABLE_FASTAPI_CORS", "").lower() == "true":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[os.getenv("FRONTEND_URL", "http://localhost:3000")],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Mount media uploads directory
 media_dir = Path("media_uploads")
