@@ -1,4 +1,5 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:8000'
-}; 
+  apiUrl: 'https://petapi.executable.fun',
+  wsUrl: 'wss://petapi.executable.fun/ws',
+};

@@ -1,0 +1,24 @@
+[Unit]
+Description=Pet Scale Backend Service
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/petscale
+Environment="PATH=/var/www/petscale/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+EnvironmentFile=/var/www/petscale/.env
+
+ExecStart=/var/www/petscale/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+
+Restart=always
+RestartSec=5
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

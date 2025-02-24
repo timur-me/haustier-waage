@@ -1,0 +1,118 @@
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Animation Classes */
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.5s ease-out;
+}
+
+.animate-slideIn {
+  animation: slideIn 0.3s ease-out;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.3s ease-out;
+}
+
+/* Global Transitions */
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Card Animations */
+.card {
+  @apply transform transition-all duration-200;
+}
+
+.card:hover {
+  @apply shadow-lg;
+  transform: translateY(-2px);
+}
+
+/* Button Animations */
+.btn {
+  @apply transform transition-all duration-200;
+}
+
+.btn:hover {
+  @apply shadow-md;
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  @apply shadow-sm;
+  transform: translateY(0);
+}
+
+/* Table Row Animations */
+.table-row {
+  @apply transition-colors duration-200;
+}
+
+.table-row:hover {
+  @apply bg-gray-50 dark:bg-dark-secondary;
+}
+
+/* Input Animations */
+.input {
+  @apply transition-all duration-200;
+}
+
+.input:focus {
+  @apply transform scale-[1.01];
+}
+
+/* Dialog Animations */
+.dialog-overlay {
+  @apply animate-fadeIn;
+}
+
+.dialog {
+  @apply animate-scaleIn;
+} 

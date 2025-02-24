@@ -1,88 +1,193 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { ApiService } from '../../services/api.service';
+import { Router, RouterLink } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
+import { NotificationService } from '../../services/notification.service';
+import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
+import { NotificationComponent } from '../notification/notification.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ThemeToggleComponent,
+    RouterLink,
+    NotificationComponent,
+  ],
   template: `
-    <div class="min-h-screen flex items-center justify-center bg-gray-100">
-      <div class="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow">
-        <div>
-          <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Welcome to Pet Weight Monitor
-          </h2>
-          <p class="mt-2 text-center text-sm text-gray-600">
-            Please enter your username to continue
-          </p>
-        </div>
-        <form class="mt-8 space-y-6" (ngSubmit)="login()">
-          <div>
-            <label for="username" class="sr-only">Username</label>
-            <input
-              id="username"
-              name="username"
-              type="text"
-              required
-              [(ngModel)]="username"
-              class="appearance-none rounded relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              placeholder="Enter your username"
+    <div
+      class="min-h-screen bg-gray-100 dark:bg-dark-primary transition-colors"
+    >
+      <!-- Minimal Header -->
+      <div class="absolute top-4 right-4">
+        <app-theme-toggle />
+      </div>
+
+      <!-- Notification Component -->
+      <app-notification />
+
+      <!-- Centered Login Form -->
+      <div
+        class="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8"
+      >
+        <div class="max-w-md w-full space-y-8">
+          <!-- Logo and Title -->
+          <div class="text-center">
+            <img
+              class="mx-auto h-24 w-auto"
+              src="assets/images/logo.svg"
+              alt="Pet Weight Monitor"
             />
-          </div>
-
-          <div>
-            <button
-              type="submit"
-              [disabled]="isLoading"
-              class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            <h2
+              class="mt-6 text-3xl font-extrabold text-gray-900 dark:text-dark-text"
             >
-              {{ isLoading ? 'Signing in...' : 'Sign in' }}
-            </button>
+              Sign in to your account
+            </h2>
           </div>
 
-          <div *ngIf="error" class="text-red-500 text-sm text-center">
-            {{ error }}
+          <!-- Error message -->
+          <div
+            *ngIf="error"
+            class="bg-red-50 dark:bg-red-900/20 p-4 rounded-md"
+          >
+            <p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
           </div>
-        </form>
+
+          <!-- Login Form -->
+          <div class="mt-8">
+            <form
+              #loginForm="ngForm"
+              class="space-y-4"
+              (ngSubmit)="onSubmit(loginForm)"
+              novalidate
+            >
+              <div>
+                <label for="username" class="sr-only">Username</label>
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  required
+                  [(ngModel)]="username"
+                  class="input w-full"
+                  placeholder="Username"
+                  [disabled]="isLoading"
+                />
+              </div>
+              <div>
+                <label for="password" class="sr-only">Password</label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  [(ngModel)]="password"
+                  class="input w-full"
+                  placeholder="Password"
+                  [disabled]="isLoading"
+                />
+              </div>
+
+              <!-- Login Button -->
+              <div class="mt-4">
+                <button
+                  type="submit"
+                  [disabled]="isLoading || !loginForm.form.valid"
+                  class="btn btn-primary w-full flex justify-center items-center"
+                >
+                  <span *ngIf="isLoading" class="animate-spin mr-2">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <circle
+                        class="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="4"
+                      ></circle>
+                      <path
+                        class="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                  </span>
+                  {{ isLoading ? 'Signing in...' : 'Sign in' }}
+                </button>
+              </div>
+            </form>
+
+            <!-- Links -->
+            <div class="mt-6 text-center text-sm space-y-2">
+              <p class="text-gray-600 dark:text-dark-muted">
+                Don't have an account?
+                <a
+                  routerLink="/register"
+                  class="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  Register
+                </a>
+              </p>
+              <p>
+                <a
+                  routerLink="/forgot-password"
+                  class="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  Forgot your password?
+                </a>
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   `,
-  styles: []
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   username = '';
-  isLoading = false;
+  password = '';
   error = '';
+  isLoading = false;
 
   constructor(
-    private apiService: ApiService,
-    private router: Router
+    private authService: AuthService,
+    private router: Router,
+    private notificationService: NotificationService
   ) {}
 
-  login() {
-    if (!this.username.trim()) {
-      this.error = 'Please enter a username';
+  ngOnInit() {
+    // Check for redirected username (from username change)
+    const redirectUsername = localStorage.getItem('redirectUsername');
+    if (redirectUsername) {
+      this.username = redirectUsername;
+      localStorage.removeItem('redirectUsername'); // Clear it after use
+    }
+
+    // If user is already logged in, redirect to home
+    if (this.authService.isAuthenticated()) {
+      this.router.navigate(['/']);
+    }
+  }
+
+  async onSubmit(form: any) {
+    if (!form.valid) {
       return;
     }
 
     this.isLoading = true;
     this.error = '';
 
-    this.apiService.login(this.username).subscribe({
-      next: (response) => {
-        // Store the token in localStorage
-        localStorage.setItem('token', response.access_token);
-        // Navigate to the animals page
-        this.router.navigate(['/animals']);
-      },
-      error: (error) => {
-        console.error('Login error:', error);
-        this.error = 'Failed to sign in. Please try again.';
-        this.isLoading = false;
-      }
-    });
+    try {
+      await this.authService.login(this.username, this.password);
+      this.notificationService.showSuccess('Successfully logged in');
+      this.router.navigate(['/']);
+    } catch (error: any) {
+      this.error = error.message || 'An error occurred during login';
+      this.isLoading = false;
+      form.form.setErrors({ invalidLogin: true });
+    }
   }
-} 
+}

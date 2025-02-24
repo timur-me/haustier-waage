@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#2563EB;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+    <circle cx="16" cy="16" r="15" fill="url(#gradient)" stroke="#1D4ED8" stroke-width="1"/>
+    <!-- Scale base -->
+    <rect x="8" y="19" width="16" height="2" rx="1" fill="white"/>
+    <!-- Scale platform -->
+    <rect x="6" y="21" width="20" height="1" rx="0.5" fill="white"/>
+    <!-- Paw print -->
+    <g transform="translate(11,9) scale(0.07)">
+        <path d="M85 80C85 88.8366 77.8366 96 69 96C60.1634 96 53 88.8366 53 80C53 71.1634 60.1634 64 69 64C77.8366 64 85 71.1634 85 80Z" fill="white"/>
+        <path d="M147 80C147 88.8366 139.837 96 131 96C122.163 96 115 88.8366 115 80C115 71.1634 122.163 64 131 64C139.837 64 147 71.1634 147 80Z" fill="white"/>
+        <path d="M116 110C116 118.837 108.837 126 100 126C91.1634 126 84 118.837 84 110C84 101.163 91.1634 94 100 94C108.837 94 116 101.163 116 110Z" fill="white"/>
+        <path d="M85 140C85 148.837 77.8366 156 69 156C60.1634 156 53 148.837 53 140C53 131.163 60.1634 124 69 124C77.8366 124 85 131.163 85 140Z" fill="white"/>
+        <path d="M147 140C147 148.837 139.837 156 131 156C122.163 156 115 148.837 115 140C115 131.163 122.163 124 131 124C139.837 124 147 131.163 147 140Z" fill="white"/>
+    </g>
+</svg> 

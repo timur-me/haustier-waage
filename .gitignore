@@ -1,4 +1,7 @@
+
+
 # Python
+.DS_Store
 .pytest_cache
 __pycache__/
 *.py[cod]
@@ -25,6 +28,7 @@ wheels/
 venv/
 ENV/
 env/
+tests/.venv_test
 
 # IDE
 .idea/
