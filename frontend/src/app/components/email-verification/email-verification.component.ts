@@ -61,7 +61,7 @@ import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
               (click)="goToLogin()"
               class="w-full px-4 py-2 text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg transition-all duration-200 transform hover:scale-105"
             >
-              Continue to Login
+              Continue to Portal
             </button>
           </div>
 
@@ -139,6 +139,6 @@ export class EmailVerificationComponent implements OnInit {
   }
 
   goToLogin() {
-    this.router.navigate(['/login']);
+    this.router.navigate(['/animals']);
   }
 }
