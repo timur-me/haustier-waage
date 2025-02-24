@@ -11,6 +11,7 @@ import logging
 from datetime import datetime
 import asyncio
 from functools import partial
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,11 +25,11 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 FROM_EMAIL = os.getenv("FROM_EMAIL")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:4200")
 
 # Initialize Jinja2 environment for email templates
-template_env = Environment(
-    loader=FileSystemLoader("app/templates/email")
-)
+template_dir = Path(__file__).parent.parent / "templates" / "email"
+template_env = Environment(loader=FileSystemLoader(str(template_dir)))
 
 
 def _send_email_sync(
@@ -110,7 +111,7 @@ async def send_password_reset_email(
             subject="Password Reset Request",
             template_name="reset_password.html",
             template_data={
-                "reset_url": f"http://localhost:4200/reset-password/{reset_token}",
+                "reset_url": f"{FRONTEND_URL}/reset-password/{reset_token}",
                 "username": username
             }
         )
@@ -133,7 +134,7 @@ async def send_verification_email(
             subject="Verify Your Email",
             template_name="verify_email.html",
             template_data={
-                "verify_url": f"http://localhost:4200/verify-email/{verification_token}",
+                "verify_url": f"{FRONTEND_URL}/verify-email/{verification_token}",
                 "username": username
             }
         )
