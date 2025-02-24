@@ -1,59 +1,68 @@
-# 🐾 Pet Weight Monitoring System
+# 🐾 Haustier Waage (Pet Scale)
 
-A modern, full-stack application for tracking pet weights and health over time. Built with FastAPI and Angular.
+A modern, full-stack application for tracking pet weights and health, featuring real-time updates and beautiful visualizations.
 
-## 🌟 Features
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Backend](https://img.shields.io/badge/backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
+[![Frontend](https://img.shields.io/badge/frontend-Angular-DD0031.svg)](https://angular.io/)
+[![Database](https://img.shields.io/badge/database-PostgreSQL-336791.svg)](https://www.postgresql.org/)
 
-- 🔐 Secure user authentication with JWT tokens
-- 🐈 Pet management (add, update, delete pets)
-- ⚖️ Weight tracking with history
-- 📊 Interactive weight trend visualization
-- 🔄 Real-time updates
-- 📱 Responsive design
+## ✨ Features
 
-## 🏗️ Architecture
+- **🔐 Secure Authentication**
 
-### Backend (FastAPI)
+  - Email verification
+  - JWT-based authentication
+  - Password reset functionality
+  - Rate limiting protection
 
-The backend is built with FastAPI, providing a robust and high-performance REST API.
+- **🐈 Pet Management**
 
-#### Key Components:
+  - Multiple pets per user
+  - Pet profiles with images
+  - Species and breed tracking
+  - Birth date tracking
 
-- **Authentication Service**: JWT-based authentication with token refresh
-- **Database Layer**: PostgreSQL with SQLAlchemy ORM
-- **API Endpoints**:
-  - `/auth`: User authentication
-  - `/animals`: Pet management
-  - `/weights`: Weight tracking
+- **⚖️ Weight Tracking**
 
-#### Technical Highlights:
+  - Real-time weight updates
+  - Weight history visualization
+  - Trend analysis
+  - CSV/JSON export
 
-- Type-safe with Python type hints
-- Comprehensive test suite
-- Modular architecture
-- Database migrations with Alembic
-- Environment-based configuration
+- **📱 Modern UI/UX**
+  - Responsive design
+  - Dark mode support
+  - Real-time updates via WebSocket
+  - Interactive charts
+  - Mobile-friendly interface
 
-### Frontend (Angular)
+## 🛠️ Technology Stack
 
-The frontend is built with Angular 17, offering a modern and responsive user interface.
+### Backend
 
-#### Key Features:
+- [FastAPI](https://fastapi.tiangolo.com/) - Modern Python web framework
+- [PostgreSQL](https://www.postgresql.org/) - Robust database
+- [SQLAlchemy](https://www.sqlalchemy.org/) - SQL toolkit and ORM
+- [Pydantic](https://pydantic-docs.helpmanual.io/) - Data validation
+- [JWT](https://jwt.io/) - Authentication
+- [WebSocket](https://websockets.readthedocs.io/) - Real-time updates
 
-- Tailwind CSS for styling
-- Chart.js for data visualization
-- Standalone components
-- Type-safe API integration
-- Real-time updates
+### Frontend
+
+- [Angular](https://angular.io/) - Progressive web framework
+- [TailwindCSS](https://tailwindcss.com/) - Utility-first CSS
+- [Chart.js](https://www.chartjs.org/) - Beautiful charts
+- [RxJS](https://rxjs.dev/) - Reactive programming
+- [NgRx](https://ngrx.io/) - State management
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- Python 3.8+
-- PostgreSQL 12+
+- Python 3.11+
 - Node.js 18+
-- npm/yarn
+- PostgreSQL 15+
 - Git
 
 ### Backend Setup
@@ -61,16 +70,15 @@ The frontend is built with Angular 17, offering a modern and responsive user int
 1. Clone the repository:
 
    ```bash
-   git clone <repository-url>
-   cd pet-weight-monitor
+   git clone https://github.com/yourusername/petscale.git
+   cd petscale
    ```
 
-2. Create and activate a virtual environment:
+2. Create and activate virtual environment:
 
    ```bash
    python -m venv venv
-   source venv/bin/activate  # Linux/macOS
-   venv\\Scripts\\activate   # Windows
+   source venv/bin/activate  # or `venv\Scripts\activate` on Windows
    ```
 
 3. Install dependencies:
@@ -83,10 +91,10 @@ The frontend is built with Angular 17, offering a modern and responsive user int
 
    ```bash
    cp .env.example .env
-   # Edit .env with your database credentials and settings
+   # Edit .env with your configuration
    ```
 
-5. Run database migrations:
+5. Initialize database:
 
    ```bash
    alembic upgrade head
@@ -97,11 +105,9 @@ The frontend is built with Angular 17, offering a modern and responsive user int
    uvicorn app.main:app --reload
    ```
 
-The API will be available at `http://localhost:8000`
-
 ### Frontend Setup
 
-1. Navigate to the frontend directory:
+1. Navigate to frontend directory:
 
    ```bash
    cd frontend
@@ -113,12 +119,32 @@ The API will be available at `http://localhost:8000`
    npm install
    ```
 
-3. Start the development server:
+3. Start development server:
+
    ```bash
    npm start
    ```
 
-The frontend will be available at `http://localhost:4200`
+4. Open browser at `http://localhost:4200`
+
+## 🌍 Production Deployment
+
+For detailed deployment instructions, see [Deployment Guide](docs/Deployment.md).
+
+Key steps:
+
+1. Set up Ubuntu server
+2. Configure PostgreSQL
+3. Set up Nginx with SSL
+4. Deploy backend with systemd
+5. Build and deploy frontend
+6. Configure monitoring
+
+## 📚 API Documentation
+
+API documentation is available at `/docs` when running the backend server.
+
+For detailed API documentation, see [API Documentation](docs/API-Documentation.md).
 
 ## 🧪 Testing
 
@@ -129,60 +155,75 @@ The frontend will be available at `http://localhost:4200`
 pytest
 
 # Run with coverage
-pytest --cov=app
+pytest --cov=app tests/
 ```
 
 ### Frontend Tests
 
 ```bash
 # Run unit tests
-ng test
+npm test
 
 # Run e2e tests
-ng e2e
+npm run e2e
 ```
 
-## 📚 API Documentation
+## 🔧 Environment Variables
 
-When the backend is running, access the API documentation at:
+Create a `.env` file in the root directory:
 
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+```env
+# Database
+DATABASE_URL=postgresql://user:password@localhost/petscale
 
-## 🔒 Security Features
+# Security
+SECRET_KEY=your-secret-key
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
 
-- JWT token authentication
-- Password hashing
-- CORS protection
-- Rate limiting
-- Input validation
-- SQL injection protection
+# Email
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
 
-## 🎯 Future Improvements
-
-1. **Backend**:
-
-   - Add user registration
-   - Implement password reset
-   - Add email notifications
-   - Enhance rate limiting
-   - Add caching layer
-
-2. **Frontend**:
-   - Add offline support
-   - Implement push notifications
-   - Add data export feature
-   - Enhance visualization options
-   - Add pet photo support
+# Frontend
+FRONTEND_URL=https://pet.executable.fun
+```
 
 ## 🤝 Contributing
 
+We welcome contributions! Please see our [Contributing Guide](docs/Contributing.md) for details.
+
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🐛 Bug Reports
+
+Report bugs by creating an issue with:
+
+- Clear description of the issue
+- Steps to reproduce
+- Expected behavior
+- Screenshots if applicable
+- Environment details
+
+## 🎉 Acknowledgments
+
+- All contributors who have helped this project grow
+- The amazing open source community
+- Our dedicated users who provide valuable feedback
+
+## 📞 Support
+
+- Create an issue for bugs
+- Join our Discord community
+- Check the [FAQ](docs/FAQ.md)
+- Email support: support@pet.executable.fun
