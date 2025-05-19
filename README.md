@@ -25,14 +25,8 @@ The backend is built with FastAPI, providing a robust and high-performance REST 
   - `/auth`: User authentication
   - `/animals`: Pet management
   - `/weights`: Weight tracking
-
-#### Technical Highlights:
-
-- Type-safe with Python type hints
-- Comprehensive test suite
-- Modular architecture
-- Database migrations with Alembic
-- Environment-based configuration
+  - `/users`: User management
+  - `/media`: Handling media uploads
 
 ### Frontend (Angular)
 
@@ -62,7 +56,7 @@ The frontend is built with Angular 17, offering a modern and responsive user int
 
    ```bash
    git clone <repository-url>
-   cd pet-weight-monitor
+   cd haustier-waage
    ```
 
 2. Create and activate a virtual environment:
@@ -70,7 +64,7 @@ The frontend is built with Angular 17, offering a modern and responsive user int
    ```bash
    python -m venv venv
    source venv/bin/activate  # Linux/macOS
-   venv\\Scripts\\activate   # Windows
+   .venv\\Scripts\\activate.ps1   # Windows
    ```
 
 3. Install dependencies:
@@ -120,34 +114,11 @@ The API will be available at `http://localhost:8000`
 
 The frontend will be available at `http://localhost:4200`
 
-## 🧪 Testing
-
-### Backend Tests
-
-```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=app
-```
-
-### Frontend Tests
-
-```bash
-# Run unit tests
-ng test
-
-# Run e2e tests
-ng e2e
-```
-
 ## 📚 API Documentation
 
 When the backend is running, access the API documentation at:
 
 - Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
 
 ## 🔒 Security Features
 
@@ -162,26 +133,17 @@ When the backend is running, access the API documentation at:
 
 1. **Backend**:
 
-   - Add user registration
-   - Implement password reset
-   - Add email notifications
+   - Add user registration ✅
+   - Implement password reset ✅
+   - Add email notifications 
    - Enhance rate limiting
    - Add caching layer
 
 2. **Frontend**:
    - Add offline support
-   - Implement push notifications
    - Add data export feature
    - Enhance visualization options
-   - Add pet photo support
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+   - Add pet photo support ✅
 
 ## 📝 License
 
